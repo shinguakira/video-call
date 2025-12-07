@@ -1,110 +1,101 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import styled from 'styled-components';
 
 import {
   SignalingMessage,
   WebRTCSignalingService,
-} from '../telemedicine/service/WebRTCSignalingService';
+} from './telemedicine/service/WebRTCSignalingService';
 
-const Container = styled.div`
-  padding: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
-`;
-
-const Title = styled.h1`
-  color: #333;
-  margin-bottom: 1rem;
-`;
-
-const VideoContainer = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  margin-bottom: 1rem;
-`;
-
-const VideoBox = styled.div`
-  border: 2px solid #ddd;
-  border-radius: 8px;
-  padding: 1rem;
-  background: #f9f9f9;
-`;
-
-const VideoLabel = styled.h3`
-  margin: 0 0 0.5rem 0;
-  color: #555;
-`;
-
-const Video = styled.video`
-  width: 100%;
-  height: 300px;
-  background: #000;
-  border-radius: 4px;
-`;
-
-const ControlPanel = styled.div`
-  display: flex;
-  gap: 1rem;
-  margin-bottom: 1rem;
-  flex-wrap: wrap;
-`;
-
-const Button = styled.button<{ variant?: 'primary' | 'danger' }>`
-  padding: 0.75rem 1.5rem;
-  border: none;
-  border-radius: 4px;
-  font-size: 1rem;
-  cursor: pointer;
-  background: ${(props) => (props.variant === 'danger' ? '#dc3545' : '#007bff')};
-  color: white;
-
-  &:hover {
-    opacity: 0.9;
-  }
-
-  &:disabled {
-    background: #ccc;
-    cursor: not-allowed;
-  }
-`;
-
-const StatusPanel = styled.div`
-  background: #f0f0f0;
-  padding: 1rem;
-  border-radius: 4px;
-  margin-bottom: 1rem;
-`;
-
-const StatusItem = styled.div`
-  margin-bottom: 0.5rem;
-  font-family: monospace;
-`;
-
-const LogPanel = styled.div`
-  background: #1e1e1e;
-  color: #d4d4d4;
-  padding: 1rem;
-  border-radius: 4px;
-  max-height: 300px;
-  overflow-y: auto;
-  font-family: monospace;
-  font-size: 0.875rem;
-`;
-
-const LogEntry = styled.div<{ level: 'info' | 'warn' | 'error' }>`
-  margin-bottom: 0.25rem;
-  color: ${(props) => {
-    switch (props.level) {
-      case 'error':
-        return '#f48771';
-      case 'warn':
-        return '#dcdcaa';
-      default:
-        return '#d4d4d4';
-    }
-  }};
-`;
+// Inline styles
+const styles = {
+  container: {
+    padding: '2rem',
+    maxWidth: '1200px',
+    margin: '0 auto',
+  },
+  title: {
+    color: '#333',
+    marginBottom: '1rem',
+  },
+  videoContainer: {
+    display: 'grid',
+    gridTemplateColumns: '1fr 1fr',
+    gap: '1rem',
+    marginBottom: '1rem',
+  },
+  videoBox: {
+    border: '2px solid #ddd',
+    borderRadius: '8px',
+    padding: '1rem',
+    background: '#f9f9f9',
+  },
+  videoLabel: {
+    margin: '0 0 0.5rem 0',
+    color: '#555',
+  },
+  video: {
+    width: '100%',
+    height: '300px',
+    background: '#000',
+    borderRadius: '4px',
+  },
+  controlPanel: {
+    display: 'flex',
+    gap: '1rem',
+    marginBottom: '1rem',
+    flexWrap: 'wrap' as const,
+  },
+  button: {
+    padding: '0.75rem 1.5rem',
+    border: 'none',
+    borderRadius: '4px',
+    fontSize: '1rem',
+    cursor: 'pointer',
+    background: '#007bff',
+    color: 'white',
+  },
+  buttonDanger: {
+    padding: '0.75rem 1.5rem',
+    border: 'none',
+    borderRadius: '4px',
+    fontSize: '1rem',
+    cursor: 'pointer',
+    background: '#dc3545',
+    color: 'white',
+  },
+  buttonDisabled: {
+    padding: '0.75rem 1.5rem',
+    border: 'none',
+    borderRadius: '4px',
+    fontSize: '1rem',
+    cursor: 'not-allowed',
+    background: '#ccc',
+    color: 'white',
+  },
+  statusPanel: {
+    background: '#f0f0f0',
+    padding: '1rem',
+    borderRadius: '4px',
+    marginBottom: '1rem',
+  },
+  statusItem: {
+    marginBottom: '0.5rem',
+    fontFamily: 'monospace',
+  },
+  logPanel: {
+    background: '#1e1e1e',
+    color: '#d4d4d4',
+    padding: '1rem',
+    borderRadius: '4px',
+    maxHeight: '300px',
+    overflowY: 'auto' as const,
+    fontFamily: 'monospace',
+    fontSize: '0.875rem',
+  },
+  logEntry: (level: 'info' | 'warn' | 'error') => ({
+    marginBottom: '0.25rem',
+    color: level === 'error' ? '#f48771' : level === 'warn' ? '#dcdcaa' : '#d4d4d4',
+  }),
+};
 
 interface LogMessage {
   timestamp: string;
@@ -145,7 +136,7 @@ const WebRTCTestPage: React.FC = () => {
       const service = new WebRTCSignalingService();
       signalingServiceRef.current = service;
 
-      await service.connect('/ws/telemedicine');
+      await service.connect(); // Now connects to Socket.IO on port 4001
       setIsSignalingConnected(true);
       addLog('info', '✅ Connected to signaling server');
 
@@ -508,21 +499,21 @@ const WebRTCTestPage: React.FC = () => {
   }, []);
 
   return (
-    <Container>
-      <Title>WebRTC Perfect Negotiation Test Page</Title>
+    <div style={styles.container}>
+      <h1 style={styles.title}>WebRTC Perfect Negotiation Test Page</h1>
 
-      <VideoContainer>
-        <VideoBox>
-          <VideoLabel>Local Video (Polite Peer)</VideoLabel>
-          <Video ref={localVideoRef} autoPlay playsInline muted />
-        </VideoBox>
-        <VideoBox>
-          <VideoLabel>Remote Video</VideoLabel>
-          <Video ref={remoteVideoRef} autoPlay playsInline />
-        </VideoBox>
-      </VideoContainer>
+      <div style={styles.videoContainer}>
+        <div style={styles.videoBox}>
+          <h3 style={styles.videoLabel}>Local Video (Polite Peer)</h3>
+          <video ref={localVideoRef} autoPlay playsInline muted style={styles.video} />
+        </div>
+        <div style={styles.videoBox}>
+          <h3 style={styles.videoLabel}>Remote Video</h3>
+          <video ref={remoteVideoRef} autoPlay playsInline style={styles.video} />
+        </div>
+      </div>
 
-      <ControlPanel>
+      <div style={styles.controlPanel}>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <label>Room ID:</label>
           <input
@@ -547,28 +538,29 @@ const WebRTCTestPage: React.FC = () => {
             Polite
           </label>
         </div>
-      </ControlPanel>
+      </div>
 
-      <ControlPanel>
-        <Button onClick={connectSignaling} disabled={isSignalingConnected}>
+      <div style={styles.controlPanel}>
+        <button onClick={connectSignaling} disabled={isSignalingConnected} style={isSignalingConnected ? styles.buttonDisabled : styles.button}>
           1. Connect Signaling
-        </Button>
-        <Button onClick={joinRoom} disabled={!isSignalingConnected}>
+        </button>
+        <button onClick={joinRoom} disabled={!isSignalingConnected} style={!isSignalingConnected ? styles.buttonDisabled : styles.button}>
           2. Join Room
-        </Button>
-        <Button onClick={startLocalStream} disabled={!!localStream}>
+        </button>
+        <button onClick={startLocalStream} disabled={!!localStream} style={!!localStream ? styles.buttonDisabled : styles.button}>
           3. Start Local Stream
-        </Button>
-        <Button onClick={initializePeerConnection} disabled={!localStream || !!pcRef.current}>
+        </button>
+        <button onClick={initializePeerConnection} disabled={!localStream || !!pcRef.current} style={!localStream || !!pcRef.current ? styles.buttonDisabled : styles.button}>
           4. Initialize PeerConnection
-        </Button>
-        <Button
+        </button>
+        <button
           onClick={() => remoteUserId && initiateConnection(remoteUserId)}
           disabled={!pcRef.current || !remoteUserId}
+          style={!pcRef.current || !remoteUserId ? styles.buttonDisabled : styles.button}
         >
           5. Send Offer (Manual)
-        </Button>
-        <Button
+        </button>
+        <button
           onClick={() => {
             const service = signalingServiceRef.current;
             if (service) {
@@ -584,61 +576,62 @@ const WebRTCTestPage: React.FC = () => {
             }
           }}
           disabled={!isSignalingConnected}
+          style={!isSignalingConnected ? styles.buttonDisabled : styles.button}
         >
           Test Room Broadcast
-        </Button>
-        <Button variant="danger" onClick={cleanup}>
+        </button>
+        <button onClick={cleanup} style={styles.buttonDanger}>
           Cleanup
-        </Button>
-      </ControlPanel>
+        </button>
+      </div>
 
-      <StatusPanel>
-        <StatusItem>
+      <div style={styles.statusPanel}>
+        <div style={styles.statusItem}>
           <strong>Role:</strong> {isPolite ? 'Polite' : 'Impolite'}
-        </StatusItem>
-        <StatusItem>
+        </div>
+        <div style={styles.statusItem}>
           <strong>Room ID:</strong> {roomId}
-        </StatusItem>
-        <StatusItem>
+        </div>
+        <div style={styles.statusItem}>
           <strong>User ID:</strong> {userId}
-        </StatusItem>
-        <StatusItem>
+        </div>
+        <div style={styles.statusItem}>
           <strong>Signaling:</strong> {isSignalingConnected ? '✅ Connected' : '❌ Disconnected'}
-        </StatusItem>
-        <StatusItem>
+        </div>
+        <div style={styles.statusItem}>
           <strong>Remote User:</strong> {remoteUserId || '❌ Not detected'}
-        </StatusItem>
-        <StatusItem>
+        </div>
+        <div style={styles.statusItem}>
           <strong>Session ID:</strong>{' '}
           {signalingServiceRef.current?.getSessionId() || '❌ Not connected'}
-        </StatusItem>
-        <StatusItem>
+        </div>
+        <div style={styles.statusItem}>
           <strong>Subscriptions:</strong> Listening on /user/queue/telemedicine/*
-        </StatusItem>
-        <StatusItem>
+        </div>
+        <div style={styles.statusItem}>
           <strong>Connection State:</strong> {connectionState}
-        </StatusItem>
-        <StatusItem>
+        </div>
+        <div style={styles.statusItem}>
           <strong>ICE Connection State:</strong> {iceConnectionState}
-        </StatusItem>
-        <StatusItem>
+        </div>
+        <div style={styles.statusItem}>
           <strong>Signaling State:</strong> {signalingState}
-        </StatusItem>
-        <StatusItem>
+        </div>
+        <div style={styles.statusItem}>
           <strong>Local Stream:</strong> {localStream ? '✅ Active' : '❌ Not started'}
-        </StatusItem>
-        <StatusItem>
+        </div>
+        <div style={styles.statusItem}>
           <strong>PeerConnection:</strong> {pcRef.current ? '✅ Initialized' : '❌ Not initialized'}
-        </StatusItem>
-      </StatusPanel>
+        </div>
+      </div>
 
-      <LogPanel>
+      <div style={styles.logPanel}>
         {logs.map((log, index) => (
-          <LogEntry key={index} level={log.level}>
+          <div key={index} style={styles.logEntry(log.level)}>
             [{log.timestamp}] {log.message}
-          </LogEntry>
+          </div>
         ))}
-      </LogPanel>
+      </div>
 
       <div
         style={{ marginTop: '1rem', padding: '1rem', background: '#d1ecf1', borderRadius: '4px' }}
@@ -685,7 +678,7 @@ const WebRTCTestPage: React.FC = () => {
           <li>If ICE connection fails - check firewall/network settings</li>
         </ul>
       </div>
-    </Container>
+    </div>
   );
 };
 

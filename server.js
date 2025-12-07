@@ -20,7 +20,10 @@ io.on('connection', (socket) => {
 
   // Join room
   socket.on('join-room', ({ roomId, userId, userName }) => {
+    console.log(`[JOIN] ========================================`);
     console.log(`[JOIN] User ${userId} (${userName}) joining room ${roomId}`);
+    console.log(`[JOIN] Socket ID: ${socket.id}`);
+    
     socket.join(roomId);
 
     if (!rooms.has(roomId)) {
@@ -30,7 +33,10 @@ io.on('connection', (socket) => {
     const room = rooms.get(roomId);
     const existingUsers = Array.from(room.values());
 
-    console.log(`[JOIN] Room ${roomId} had ${existingUsers.length} existing users`);
+    console.log(`[JOIN] Room ${roomId} had ${existingUsers.length} existing users before this join`);
+    if (existingUsers.length > 0) {
+      console.log(`[JOIN] Existing users:`, existingUsers.map(u => `${u.userName}(${u.userId})`).join(', '));
+    }
 
     // Add user to room
     room.set(userId, { socketId: socket.id, userId, userName });
@@ -40,24 +46,28 @@ io.on('connection', (socket) => {
       console.log(`[JOIN] ${userId} is FIRST user in room ${roomId}`);
       socket.emit('room-joined', { isFirst: true });
     } else {
-      // Notify existing users
-      console.log(`[JOIN] Emitting 'user-joined' to room ${roomId} for ${userId}`);
-      const emitResult = socket.to(roomId).emit('user-joined', { userId, userName });
-      console.log(`[JOIN] Emitted user-joined, room has ${io.sockets.adapter.rooms.get(roomId)?.size || 0} sockets`);
+      // Notify existing users about the new joiner
+      console.log(`[JOIN] Broadcasting 'user-joined' to existing users in room ${roomId}`);
+      console.log(`[JOIN] Message: { userId: ${userId}, userName: ${userName} }`);
+      socket.to(roomId).emit('user-joined', { userId, userName });
+      console.log(`[JOIN] Broadcast complete. Room now has ${io.sockets.adapter.rooms.get(roomId)?.size || 0} sockets`);
 
       // Send existing users to new user
-      console.log(`[JOIN] Sending ${existingUsers.length} existing users to ${userId}`);
+      console.log(`[JOIN] Sending ${existingUsers.length} existing user(s) to ${userId}:`);
+      existingUsers.forEach(u => console.log(`[JOIN]   - ${u.userName} (${u.userId})`));
       socket.emit('existing-users', existingUsers.map(u => ({
         userId: u.userId,
         userName: u.userName
       })));
     }
 
-    console.log(`[JOIN] Room ${roomId} now has ${room.size} users:`, Array.from(room.keys()));
+    console.log(`[JOIN] Room ${roomId} now has ${room.size} total users:`, Array.from(room.keys()).join(', '));
+    console.log(`[JOIN] ========================================`);
   });
 
   // Relay WebRTC signals
   socket.on('signal', ({ targetUserId, signal }) => {
+    console.log(`[SIGNAL] From ${socket.id} to ${targetUserId}, type: ${signal.type || 'unknown'}`);
     let targetSocketId = null;
 
     rooms.forEach((users) => {
@@ -79,11 +89,16 @@ io.on('connection', (socket) => {
       });
 
       if (fromUserId) {
+        console.log(`[SIGNAL] Relaying from ${fromUserId} to ${targetUserId} (socket: ${targetSocketId})`);
         io.to(targetSocketId).emit('signal', {
           fromUserId,
           signal
         });
+      } else {
+        console.error(`[SIGNAL] Could not find sender userId for socket ${socket.id}`);
       }
+    } else {
+      console.error(`[SIGNAL] Could not find target socket for userId ${targetUserId}`);
     }
   });
 

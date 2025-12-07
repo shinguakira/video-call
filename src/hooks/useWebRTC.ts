@@ -2,6 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import SimplePeer from 'simple-peer';
 import { Socket } from 'socket.io-client';
 
+// ICE server configuration for NAT traversal
+const ICE_SERVERS_CONFIG = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' }
+  ]
+};
+
 interface PeerData {
   peerId: string;
   peer: SimplePeer.Instance;
@@ -65,6 +73,9 @@ export const useWebRTC = ({
 
     console.log('useWebRTC: Registering event listeners');
 
+    // Buffer for signals that arrive before peer is created
+    const pendingSignals = new Map<string, any[]>();
+
     // Handle new user joined
     const handleUserJoined = ({ userId: newUserId, userName: newUserName }: {
       userId: string;
@@ -72,9 +83,17 @@ export const useWebRTC = ({
     }) => {
       console.log('[CLIENT] Received user-joined event:', { newUserId, newUserName });
       console.log('[CLIENT] Current peers:', Array.from(peersRef.current.keys()));
+      console.log('[CLIENT] Current stream available:', !!streamRef.current);
 
       if (!streamRef.current) {
-        console.error('[CLIENT] Cannot create peer - no local stream');
+        console.error('[CLIENT] Cannot create peer - no local stream available yet');
+        console.error('[CLIENT] This is a critical error - user-joined fired before stream was ready');
+        return;
+      }
+
+      // Check if peer already exists (prevent duplicates)
+      if (peersRef.current.has(newUserId)) {
+        console.warn('[CLIENT] Peer already exists for', newUserId, '- skipping duplicate creation');
         return;
       }
 
@@ -82,14 +101,15 @@ export const useWebRTC = ({
       const peer = new SimplePeer({
         initiator: true,
         stream: streamRef.current,
-        trickle: true
+        trickle: true,
+        config: ICE_SERVERS_CONFIG
       });
 
       console.log('[CLIENT] Created peer as INITIATOR for', newUserId);
 
       // When peer generates signal, send to socket
       peer.on('signal', (signal) => {
-        console.log('[CLIENT] Sending signal to', newUserId);
+        console.log('[CLIENT] Sending signal to', newUserId, 'type:', signal.type);
         socket.emit('signal', {
           targetUserId: newUserId,
           signal
@@ -112,37 +132,71 @@ export const useWebRTC = ({
         });
       });
 
+      // Handle connection
+      peer.on('connect', () => {
+        console.log('[CLIENT] Peer connected successfully with', newUserId);
+      });
+
       // Handle errors
       peer.on('error', (err) => {
         console.error('[CLIENT] Peer error with', newUserId, ':', err);
       });
 
+      // Handle close
+      peer.on('close', () => {
+        console.log('[CLIENT] Peer connection closed with', newUserId);
+      });
+
       peersRef.current.set(newUserId, peer);
       console.log('[CLIENT] Added peer to peersRef, total:', peersRef.current.size);
+
+      // Process any buffered signals for this peer
+      const buffered = pendingSignals.get(newUserId);
+      if (buffered && buffered.length > 0) {
+        console.log('[CLIENT] Processing', buffered.length, 'buffered signals for', newUserId);
+        buffered.forEach(bufferedSignal => {
+          try {
+            peer.signal(bufferedSignal);
+            console.log('[CLIENT] Processed buffered signal type:', bufferedSignal.type);
+          } catch (error) {
+            console.error('[CLIENT] Error processing buffered signal:', error);
+          }
+        });
+        pendingSignals.delete(newUserId);
+      }
     };
 
     // Handle existing users in room
     const handleExistingUsers = (existingUsers: Array<{ userId: string; userName: string }>) => {
       console.log('[CLIENT] Received existing-users event:', existingUsers);
       console.log('[CLIENT] Will create', existingUsers.length, 'peer connections as NON-INITIATOR');
+      console.log('[CLIENT] Current stream available:', !!streamRef.current);
       
       if (!streamRef.current) {
-        console.error('[CLIENT] Cannot create peers - no local stream');
+        console.error('[CLIENT] Cannot create peers - no local stream available yet');
+        console.error('[CLIENT] This is a critical error - existing-users fired before stream was ready');
         return;
       }
 
       existingUsers.forEach(({ userId: existingUserId, userName: existingUserName }) => {
         console.log('[CLIENT] Creating peer for existing user:', existingUserId);
         
+        // Check if peer already exists (prevent duplicates)
+        if (peersRef.current.has(existingUserId)) {
+          console.warn('[CLIENT] Peer already exists for existing user', existingUserId, '- skipping');
+          return;
+        }
+        
         // Create peer connection (we are NOT initiator)
         const peer = new SimplePeer({
           initiator: false,
-          stream: streamRef.current!,
-          trickle: true
+          stream: streamRef.current as MediaStream,
+          trickle: true,
+          config: ICE_SERVERS_CONFIG
         });
 
         peer.on('signal', (signal) => {
-          console.log('[CLIENT] Sending signal to existing user', existingUserId);
+          console.log('[CLIENT] Sending signal to existing user', existingUserId, 'type:', signal.type);
           socket.emit('signal', {
             targetUserId: existingUserId,
             signal
@@ -164,11 +218,34 @@ export const useWebRTC = ({
           });
         });
 
+        peer.on('connect', () => {
+          console.log('[CLIENT] Peer connected successfully with existing user', existingUserId);
+        });
+
         peer.on('error', (err) => {
           console.error('[CLIENT] Peer error with existing user', existingUserId, ':', err);
         });
 
+        peer.on('close', () => {
+          console.log('[CLIENT] Peer connection closed with existing user', existingUserId);
+        });
+
         peersRef.current.set(existingUserId, peer);
+
+        // Process any buffered signals for this peer
+        const buffered = pendingSignals.get(existingUserId);
+        if (buffered && buffered.length > 0) {
+          console.log('[CLIENT] Processing', buffered.length, 'buffered signals for existing user', existingUserId);
+          buffered.forEach(bufferedSignal => {
+            try {
+              peer.signal(bufferedSignal);
+              console.log('[CLIENT] Processed buffered signal type:', bufferedSignal.type);
+            } catch (error) {
+              console.error('[CLIENT] Error processing buffered signal:', error);
+            }
+          });
+          pendingSignals.delete(existingUserId);
+        }
       });
       
       console.log('[CLIENT] Finished processing existing users, peersRef has:', peersRef.current.size, 'peers');
@@ -179,13 +256,25 @@ export const useWebRTC = ({
       fromUserId: string;
       signal: any;
     }) => {
-      console.log('[CLIENT] Received signal from', fromUserId);
+      console.log('[CLIENT] Received signal from', fromUserId, 'type:', signal.type);
       const peer = peersRef.current.get(fromUserId);
       if (peer) {
         console.log('[CLIENT] Found peer for', fromUserId, ', passing signal');
-        peer.signal(signal);
+        try {
+          peer.signal(signal);
+        } catch (error) {
+          console.error('[CLIENT] Error signaling peer', fromUserId, ':', error);
+        }
       } else {
-        console.error('[CLIENT] No peer found for', fromUserId, '! Available peers:', Array.from(peersRef.current.keys()));
+        console.warn('[CLIENT] No peer found for', fromUserId, ' yet - buffering signal');
+        console.warn('[CLIENT] Available peers:', Array.from(peersRef.current.keys()));
+        
+        // Buffer the signal until peer is created
+        if (!pendingSignals.has(fromUserId)) {
+          pendingSignals.set(fromUserId, []);
+        }
+        pendingSignals.get(fromUserId)!.push(signal);
+        console.log('[CLIENT] Buffered signal for', fromUserId, '- total buffered:', pendingSignals.get(fromUserId)!.length);
       }
     };
 
@@ -201,6 +290,12 @@ export const useWebRTC = ({
           newPeers.delete(leftUserId);
           return newPeers;
         });
+      }
+
+      // Clean up any buffered signals for this user to prevent memory leaks
+      if (pendingSignals.has(leftUserId)) {
+        console.log('[CLIENT] Cleaning up buffered signals for left user:', leftUserId);
+        pendingSignals.delete(leftUserId);
       }
     };
 
@@ -246,6 +341,8 @@ export const useWebRTC = ({
     }
 
     console.log('useWebRTC: Emitting join-room NOW');
+    // Ensure stream is set in ref before joining
+    streamRef.current = localStream;
     socket.emit('join-room', { roomId, userId, userName });
   }, [socket, isConnected, localStream, roomId, userId, userName]);
 
