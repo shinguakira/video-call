@@ -73,6 +73,9 @@ export const useWebRTC = ({
 
     console.log('useWebRTC: Registering event listeners');
 
+    // Buffer for signals that arrive before peer is created
+    const pendingSignals = new Map<string, any[]>();
+
     // Handle new user joined
     const handleUserJoined = ({ userId: newUserId, userName: newUserName }: {
       userId: string;
@@ -146,6 +149,21 @@ export const useWebRTC = ({
 
       peersRef.current.set(newUserId, peer);
       console.log('[CLIENT] Added peer to peersRef, total:', peersRef.current.size);
+
+      // Process any buffered signals for this peer
+      const buffered = pendingSignals.get(newUserId);
+      if (buffered && buffered.length > 0) {
+        console.log('[CLIENT] Processing', buffered.length, 'buffered signals for', newUserId);
+        buffered.forEach(bufferedSignal => {
+          try {
+            peer.signal(bufferedSignal);
+            console.log('[CLIENT] Processed buffered signal type:', bufferedSignal.type);
+          } catch (error) {
+            console.error('[CLIENT] Error processing buffered signal:', error);
+          }
+        });
+        pendingSignals.delete(newUserId);
+      }
     };
 
     // Handle existing users in room
@@ -213,6 +231,21 @@ export const useWebRTC = ({
         });
 
         peersRef.current.set(existingUserId, peer);
+
+        // Process any buffered signals for this peer
+        const buffered = pendingSignals.get(existingUserId);
+        if (buffered && buffered.length > 0) {
+          console.log('[CLIENT] Processing', buffered.length, 'buffered signals for existing user', existingUserId);
+          buffered.forEach(bufferedSignal => {
+            try {
+              peer.signal(bufferedSignal);
+              console.log('[CLIENT] Processed buffered signal type:', bufferedSignal.type);
+            } catch (error) {
+              console.error('[CLIENT] Error processing buffered signal:', error);
+            }
+          });
+          pendingSignals.delete(existingUserId);
+        }
       });
       
       console.log('[CLIENT] Finished processing existing users, peersRef has:', peersRef.current.size, 'peers');
@@ -233,8 +266,15 @@ export const useWebRTC = ({
           console.error('[CLIENT] Error signaling peer', fromUserId, ':', error);
         }
       } else {
-        console.error('[CLIENT] No peer found for', fromUserId, '! Available peers:', Array.from(peersRef.current.keys()));
-        console.error('[CLIENT] This might be a race condition - signal arrived before peer was created');
+        console.warn('[CLIENT] No peer found for', fromUserId, ' yet - buffering signal');
+        console.warn('[CLIENT] Available peers:', Array.from(peersRef.current.keys()));
+        
+        // Buffer the signal until peer is created
+        if (!pendingSignals.has(fromUserId)) {
+          pendingSignals.set(fromUserId, []);
+        }
+        pendingSignals.get(fromUserId)!.push(signal);
+        console.log('[CLIENT] Buffered signal for', fromUserId, '- total buffered:', pendingSignals.get(fromUserId)!.length);
       }
     };
 
