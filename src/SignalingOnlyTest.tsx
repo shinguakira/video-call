@@ -23,7 +23,7 @@ const SignalingOnlyTest: React.FC = () => {
     const init = async () => {
       try {
         addLog('Connecting to signaling server...');
-        await signalingService.connect('http://localhost:8080/ws/telemedicine');
+        await signalingService.connect(); // Now connects to Socket.IO on port 4001
         addLog('✅ Connected to signaling server');
 
         // Setup message handlers

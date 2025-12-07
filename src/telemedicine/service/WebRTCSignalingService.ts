@@ -1,7 +1,10 @@
 /**
  * WebRTC Signaling Service
- * Handles WebSocket communication for WebRTC offer/answer/ICE candidate exchange
+ * Handles Socket.IO communication for WebRTC offer/answer/ICE candidate exchange
+ * Now uses the existing Socket.IO server on port 4001 instead of a separate WebSocket server
  */
+
+import { io, Socket } from 'socket.io-client';
 
 export interface SignalingMessage {
   type: 'offer' | 'answer' | 'ice-candidate' | 'join' | 'leave';
@@ -15,56 +18,48 @@ export interface SignalingMessage {
 type MessageHandler = (message: SignalingMessage) => void;
 
 export class WebRTCSignalingService {
-  private ws: WebSocket | null = null;
+  private socket: Socket | null = null;
   private sessionId: string | null = null;
   private currentUserId: string | null = null;
   private currentRoomId: string | null = null;
   private messageHandlers: Map<string, MessageHandler[]> = new Map();
-  private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-  private reconnectDelay = 1000;
-  private lastConnectUrl: string | null = null;
 
   /**
-   * Connect to WebSocket signaling server
+   * Connect to Socket.IO signaling server
+   * @param url - Ignored parameter for backward compatibility. Always connects to localhost:4001
    */
-  async connect(url: string): Promise<void> {
+  async connect(url?: string): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
-        // Use relative URL if provided without protocol
-        const wsUrl = url.startsWith('ws://') || url.startsWith('wss://') 
-          ? url 
-          : `ws://${window.location.hostname}:8080${url}`;
+        // Always connect to the Socket.IO server on port 4001
+        const socketUrl = 'http://localhost:4001';
+        console.log('[SignalingService] Connecting to Socket.IO server:', socketUrl);
         
-        this.lastConnectUrl = wsUrl; // Store for reconnection
-        console.log('[SignalingService] Connecting to:', wsUrl);
-        this.ws = new WebSocket(wsUrl);
+        this.socket = io(socketUrl, {
+          autoConnect: true,
+          reconnection: true,
+          reconnectionAttempts: 5,
+          reconnectionDelay: 1000,
+        });
 
-        this.ws.onopen = () => {
-          console.log('[SignalingService] WebSocket connected');
-          this.reconnectAttempts = 0;
+        this.socket.on('connect', () => {
+          console.log('[SignalingService] Socket.IO connected, socket ID:', this.socket?.id);
+          this.sessionId = this.socket?.id || null;
           resolve();
-        };
+        });
 
-        this.ws.onmessage = (event) => {
-          try {
-            const message = JSON.parse(event.data) as SignalingMessage;
-            console.log('[SignalingService] Received message:', message.type, message);
-            this.handleMessage(message);
-          } catch (error) {
-            console.error('[SignalingService] Failed to parse message:', error);
-          }
-        };
-
-        this.ws.onerror = (error) => {
-          console.error('[SignalingService] WebSocket error:', error);
+        this.socket.on('connect_error', (error) => {
+          console.error('[SignalingService] Socket.IO connection error:', error);
           reject(error);
-        };
+        });
 
-        this.ws.onclose = () => {
-          console.log('[SignalingService] WebSocket closed');
-          this.handleReconnect();
-        };
+        this.socket.on('disconnect', (reason) => {
+          console.log('[SignalingService] Socket.IO disconnected:', reason);
+        });
+
+        // Setup listeners for WebRTC signaling messages
+        this.setupSignalingListeners();
+
       } catch (error) {
         reject(error);
       }
@@ -72,31 +67,78 @@ export class WebRTCSignalingService {
   }
 
   /**
-   * Handle automatic reconnection
+   * Setup Socket.IO listeners for WebRTC signaling
    */
-  private handleReconnect(): void {
-    if (this.reconnectAttempts < this.maxReconnectAttempts && this.lastConnectUrl) {
-      this.reconnectAttempts++;
-      const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
-      console.log(`[SignalingService] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+  private setupSignalingListeners(): void {
+    if (!this.socket) return;
+
+    // Listen for user-joined event (when another user joins)
+    this.socket.on('user-joined', ({ userId, userName }: { userId: string; userName: string }) => {
+      console.log('[SignalingService] User joined:', userId);
+      const message: SignalingMessage = {
+        type: 'join',
+        senderId: userId,
+        roomId: this.currentRoomId || undefined,
+        timestamp: new Date().toISOString(),
+      };
+      this.handleMessage(message);
+    });
+
+    // Listen for existing-users event
+    this.socket.on('existing-users', (users: Array<{ userId: string; userName: string }>) => {
+      console.log('[SignalingService] Received existing users:', users);
+      users.forEach(({ userId }) => {
+        const message: SignalingMessage = {
+          type: 'join',
+          senderId: userId,
+          roomId: this.currentRoomId || undefined,
+          timestamp: new Date().toISOString(),
+        };
+        this.handleMessage(message);
+      });
+    });
+
+    // Listen for signals (offer/answer/ICE)
+    this.socket.on('signal', ({ fromUserId, signal }: { fromUserId: string; signal: any }) => {
+      console.log('[SignalingService] Received signal from:', fromUserId, 'type:', signal.type);
       
-      setTimeout(async () => {
-        if (!this.ws || this.ws.readyState === WebSocket.CLOSED) {
-          try {
-            await this.connect(this.lastConnectUrl!);
-            console.log('[SignalingService] Reconnect successful');
-            // Rejoin room if we were in one
-            if (this.currentRoomId && this.currentUserId) {
-              this.joinRoom(this.currentRoomId, this.currentUserId);
-            }
-          } catch (error) {
-            console.error('[SignalingService] Reconnect failed:', error);
-          }
-        }
-      }, delay);
-    } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('[SignalingService] Max reconnection attempts reached');
-    }
+      // Determine message type based on signal content
+      let messageType: 'offer' | 'answer' | 'ice-candidate' = 'offer';
+      let messageData = signal;
+      
+      if (signal.type === 'offer') {
+        messageType = 'offer';
+        messageData = signal;
+      } else if (signal.type === 'answer') {
+        messageType = 'answer';
+        messageData = signal;
+      } else if (signal.candidate) {
+        messageType = 'ice-candidate';
+        messageData = signal;
+      }
+
+      const message: SignalingMessage = {
+        type: messageType,
+        senderId: fromUserId,
+        targetId: this.currentUserId || undefined,
+        data: messageData,
+        roomId: this.currentRoomId || undefined,
+        timestamp: new Date().toISOString(),
+      };
+      this.handleMessage(message);
+    });
+
+    // Listen for user-left event
+    this.socket.on('user-left', ({ userId }: { userId: string }) => {
+      console.log('[SignalingService] User left:', userId);
+      const message: SignalingMessage = {
+        type: 'leave',
+        senderId: userId,
+        roomId: this.currentRoomId || undefined,
+        timestamp: new Date().toISOString(),
+      };
+      this.handleMessage(message);
+    });
   }
 
   /**
@@ -133,124 +175,122 @@ export class WebRTCSignalingService {
   }
 
   /**
-   * Join a room
+   * Join a room via Socket.IO
    */
   joinRoom(roomId: string, userId: string): void {
+    if (!this.socket) {
+      console.error('[SignalingService] Cannot join room - not connected');
+      return;
+    }
+
     this.currentRoomId = roomId;
     this.currentUserId = userId;
-    this.sessionId = userId; // Use userId as sessionId for simplicity
     
-    const message: SignalingMessage = {
-      type: 'join',
-      roomId,
-      senderId: userId,
-      timestamp: new Date().toISOString(),
-    };
-    
-    this.sendMessage(message);
-    console.log('[SignalingService] Joined room:', roomId, 'as', userId);
+    // Emit join-room event to Socket.IO server
+    this.socket.emit('join-room', { roomId, userId, userName: userId });
+    console.log('[SignalingService] Emitted join-room:', roomId, 'as', userId);
   }
 
   /**
-   * Leave a room
+   * Leave a room via Socket.IO
    */
   leaveRoom(roomId: string): void {
-    if (!this.currentUserId) return;
+    if (!this.socket || !this.currentUserId) {
+      console.error('[SignalingService] Cannot leave room - not connected or no user ID');
+      return;
+    }
 
-    const message: SignalingMessage = {
-      type: 'leave',
-      roomId,
-      senderId: this.currentUserId,
-      timestamp: new Date().toISOString(),
-    };
-    
-    this.sendMessage(message);
+    this.socket.emit('leave-room', { roomId, userId: this.currentUserId });
     this.currentRoomId = null;
     console.log('[SignalingService] Left room:', roomId);
   }
 
   /**
-   * Send an offer to a specific peer
+   * Send an offer to a specific peer via Socket.IO
    */
   sendOffer(roomId: string, targetId: string, offer: RTCSessionDescriptionInit): void {
-    if (!this.currentUserId) {
-      console.error('[SignalingService] Cannot send offer - not authenticated');
+    if (!this.socket || !this.currentUserId) {
+      console.error('[SignalingService] Cannot send offer - not connected or not authenticated');
       return;
     }
 
-    const message: SignalingMessage = {
-      type: 'offer',
-      roomId,
-      senderId: this.currentUserId,
-      targetId,
-      data: offer,
-      timestamp: new Date().toISOString(),
-    };
-    
-    this.sendMessage(message);
+    // Emit signal event with offer
+    this.socket.emit('signal', {
+      targetUserId: targetId,
+      signal: offer
+    });
     console.log('[SignalingService] Sent offer to:', targetId);
   }
 
   /**
-   * Send an answer to a specific peer
+   * Send an answer to a specific peer via Socket.IO
    */
   sendAnswer(roomId: string, targetId: string, answer: RTCSessionDescriptionInit): void {
-    if (!this.currentUserId) {
-      console.error('[SignalingService] Cannot send answer - not authenticated');
+    if (!this.socket || !this.currentUserId) {
+      console.error('[SignalingService] Cannot send answer - not connected or not authenticated');
       return;
     }
 
-    const message: SignalingMessage = {
-      type: 'answer',
-      roomId,
-      senderId: this.currentUserId,
-      targetId,
-      data: answer,
-      timestamp: new Date().toISOString(),
-    };
-    
-    this.sendMessage(message);
+    // Emit signal event with answer
+    this.socket.emit('signal', {
+      targetUserId: targetId,
+      signal: answer
+    });
     console.log('[SignalingService] Sent answer to:', targetId);
   }
 
   /**
-   * Send an ICE candidate to a specific peer
+   * Send an ICE candidate to a specific peer via Socket.IO
    */
   sendIceCandidate(roomId: string, targetId: string, candidate: RTCIceCandidateInit): void {
-    if (!this.currentUserId) {
-      console.error('[SignalingService] Cannot send ICE candidate - not authenticated');
+    if (!this.socket || !this.currentUserId) {
+      console.error('[SignalingService] Cannot send ICE candidate - not connected or not authenticated');
       return;
     }
 
-    const message: SignalingMessage = {
-      type: 'ice-candidate',
-      roomId,
-      senderId: this.currentUserId,
-      targetId,
-      data: candidate,
-      timestamp: new Date().toISOString(),
-    };
-    
-    this.sendMessage(message);
+    // Emit signal event with ICE candidate
+    this.socket.emit('signal', {
+      targetUserId: targetId,
+      signal: candidate
+    });
     console.log('[SignalingService] Sent ICE candidate to:', targetId);
   }
 
   /**
-   * Send a message through WebSocket
+   * Send a message through Socket.IO (for compatibility)
    */
   sendMessage(message: SignalingMessage): void {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message));
+    if (!this.socket) {
+      console.error('[SignalingService] Socket.IO not connected, cannot send message');
+      return;
+    }
+
+    // Map message types to Socket.IO events
+    if (message.type === 'join') {
+      this.socket.emit('join-room', {
+        roomId: message.roomId,
+        userId: message.senderId,
+        userName: message.senderId
+      });
+    } else if (message.type === 'leave') {
+      this.socket.emit('leave-room', {
+        roomId: message.roomId,
+        userId: message.senderId
+      });
     } else {
-      console.error('[SignalingService] WebSocket not connected, cannot send message');
+      // For offer/answer/ICE, use signal event
+      this.socket.emit('signal', {
+        targetUserId: message.targetId,
+        signal: message.data
+      });
     }
   }
 
   /**
-   * Check if connected
+   * Check if connected to Socket.IO server
    */
   isConnected(): boolean {
-    return this.ws !== null && this.ws.readyState === WebSocket.OPEN;
+    return this.socket !== null && this.socket.connected;
   }
 
   /**
@@ -275,16 +315,16 @@ export class WebRTCSignalingService {
   }
 
   /**
-   * Disconnect from signaling server
+   * Disconnect from Socket.IO signaling server
    */
   disconnect(): void {
     if (this.currentRoomId && this.currentUserId) {
       this.leaveRoom(this.currentRoomId);
     }
 
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
+    if (this.socket) {
+      this.socket.disconnect();
+      this.socket = null;
     }
     
     this.sessionId = null;

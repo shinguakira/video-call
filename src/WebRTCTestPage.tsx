@@ -136,7 +136,7 @@ const WebRTCTestPage: React.FC = () => {
       const service = new WebRTCSignalingService();
       signalingServiceRef.current = service;
 
-      await service.connect('/ws/telemedicine');
+      await service.connect(); // Now connects to Socket.IO on port 4001
       setIsSignalingConnected(true);
       addLog('info', '✅ Connected to signaling server');
 

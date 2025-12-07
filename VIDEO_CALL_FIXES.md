@@ -3,6 +3,20 @@
 ## Problem Statement
 The video call application had issues with WebRTC offer/answer exchange and ICE candidate handling, causing connections to fail. The issue referenced two working test files (SignalingOnlyTest.tsx and WebRTCTestPage.tsx) that demonstrate proper WebRTC signaling patterns.
 
+## CRITICAL BUG FIXED: Endpoint Mismatch
+
+**The Major Issue:** The test files tried to connect to a WebSocket server on port 8080 (`ws://localhost:8080/ws/telemedicine`) that didn't exist. Meanwhile, the main application correctly used Socket.IO on port 4001.
+
+**The Fix:** Rewrote `WebRTCSignalingService` to use Socket.IO and connect to port 4001, matching the existing server infrastructure. All components now use the same signaling endpoint.
+
+**Before:**
+- Main app → Socket.IO on port 4001 ✓
+- Test files → WebSocket on port 8080 ✗ (server doesn't exist)
+
+**After:**
+- Main app → Socket.IO on port 4001 ✓
+- Test files → Socket.IO on port 4001 ✓
+
 ## Root Causes Identified
 
 ### 1. Missing WebRTCSignalingService
@@ -26,19 +40,22 @@ There was minimal logging for debugging WebRTC connection issues, making it diff
 ## Solutions Implemented
 
 ### 1. Created WebRTCSignalingService (/src/telemedicine/service/WebRTCSignalingService.ts)
-A complete WebSocket-based signaling service that:
-- Handles WebSocket connections with automatic reconnection
+A complete Socket.IO-based signaling service that:
+- Connects to the existing Socket.IO server on port 4001 (NOT a separate WebSocket server on port 8080)
+- Handles automatic reconnection via Socket.IO
 - Provides message routing for offer/answer/ICE candidate exchange
 - Supports room-based signaling
 - Includes comprehensive error handling and logging
 
+**IMPORTANT:** This service now uses Socket.IO instead of raw WebSocket to avoid endpoint confusion. All test files and the main application use the same signaling server on port 4001.
+
 **Key Features:**
 ```typescript
-- connect(url): Connect to WebSocket server
+- connect(): Connect to Socket.IO server on localhost:4001
 - joinRoom(roomId, userId): Join a signaling room
-- sendOffer/sendAnswer/sendIceCandidate: Send WebRTC signals
+- sendOffer/sendAnswer/sendIceCandidate: Send WebRTC signals via Socket.IO
 - onMessage(type, handler): Register message handlers
-- Auto-reconnection with exponential backoff
+- Auto-reconnection via Socket.IO built-in reconnection
 ```
 
 ### 2. Added ICE Server Configuration
@@ -149,6 +166,14 @@ Both Peers:
 
 ## Testing the Fixes
 
+### CRITICAL: Endpoint Configuration
+**All components now use the same Socket.IO server on port 4001:**
+- Main application: `http://localhost:4001` (via `src/lib/socket.ts`)
+- Test pages: `http://localhost:4001` (via `WebRTCSignalingService`)
+- Server: Runs on port 4001 (via `server.js`)
+
+**No separate WebSocket server needed!** The old reference to port 8080 was a bug and has been fixed.
+
 ### Using the Main Application
 1. Start the Socket.IO server: `node server.js` (runs on port 4001)
 2. Start Next.js dev server: `npm run dev` (runs on port 3000)
@@ -163,11 +188,13 @@ The test pages provide more granular control and debugging:
 #### SignalingOnlyTest.tsx
 - Tests pure signaling (no media streams)
 - Manual offer/answer exchange
+- **Now connects to Socket.IO on port 4001** (fixed from port 8080)
 - Good for debugging server-side signaling
 
 #### WebRTCTestPage.tsx
 - Full WebRTC test with media
 - Manual step-by-step connection
+- **Now connects to Socket.IO on port 4001** (fixed from port 8080)
 - Perfect Negotiation pattern demonstration
 - Detailed logging of every step
 
