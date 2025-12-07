@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { WebRTCSignalingService } from '../telemedicine/service/WebRTCSignalingService';
+import { WebRTCSignalingService } from './telemedicine/service/WebRTCSignalingService';
 
 /**
  * Signaling-only test - no media streams
