@@ -2,6 +2,14 @@ import { useState, useEffect, useRef } from 'react';
 import SimplePeer from 'simple-peer';
 import { Socket } from 'socket.io-client';
 
+// ICE server configuration for NAT traversal
+const ICE_SERVERS_CONFIG = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:stun1.l.google.com:19302' }
+  ]
+};
+
 interface PeerData {
   peerId: string;
   peer: SimplePeer.Instance;
@@ -91,12 +99,7 @@ export const useWebRTC = ({
         initiator: true,
         stream: streamRef.current,
         trickle: true,
-        config: {
-          iceServers: [
-            { urls: 'stun:stun.l.google.com:19302' },
-            { urls: 'stun:stun1.l.google.com:19302' }
-          ]
-        }
+        config: ICE_SERVERS_CONFIG
       });
 
       console.log('[CLIENT] Created peer as INITIATOR for', newUserId);
@@ -169,14 +172,9 @@ export const useWebRTC = ({
         // Create peer connection (we are NOT initiator)
         const peer = new SimplePeer({
           initiator: false,
-          stream: streamRef.current!,
+          stream: streamRef.current as MediaStream,
           trickle: true,
-          config: {
-            iceServers: [
-              { urls: 'stun:stun.l.google.com:19302' },
-              { urls: 'stun:stun1.l.google.com:19302' }
-            ]
-          }
+          config: ICE_SERVERS_CONFIG
         });
 
         peer.on('signal', (signal) => {

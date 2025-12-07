@@ -23,6 +23,7 @@ export class WebRTCSignalingService {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectDelay = 1000;
+  private lastConnectUrl: string | null = null;
 
   /**
    * Connect to WebSocket signaling server
@@ -35,6 +36,7 @@ export class WebRTCSignalingService {
           ? url 
           : `ws://${window.location.hostname}:8080${url}`;
         
+        this.lastConnectUrl = wsUrl; // Store for reconnection
         console.log('[SignalingService] Connecting to:', wsUrl);
         this.ws = new WebSocket(wsUrl);
 
@@ -73,17 +75,27 @@ export class WebRTCSignalingService {
    * Handle automatic reconnection
    */
   private handleReconnect(): void {
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
+    if (this.reconnectAttempts < this.maxReconnectAttempts && this.lastConnectUrl) {
       this.reconnectAttempts++;
       const delay = this.reconnectDelay * Math.pow(2, this.reconnectAttempts - 1);
-      console.log(`[SignalingService] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts})`);
+      console.log(`[SignalingService] Reconnecting in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
       
-      setTimeout(() => {
-        if (this.ws?.readyState === WebSocket.CLOSED) {
-          // Reconnect logic would go here
-          console.log('[SignalingService] Reconnect attempted');
+      setTimeout(async () => {
+        if (!this.ws || this.ws.readyState === WebSocket.CLOSED) {
+          try {
+            await this.connect(this.lastConnectUrl!);
+            console.log('[SignalingService] Reconnect successful');
+            // Rejoin room if we were in one
+            if (this.currentRoomId && this.currentUserId) {
+              this.joinRoom(this.currentRoomId, this.currentUserId);
+            }
+          } catch (error) {
+            console.error('[SignalingService] Reconnect failed:', error);
+          }
         }
       }, delay);
+    } else if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.error('[SignalingService] Max reconnection attempts reached');
     }
   }
 
@@ -104,7 +116,7 @@ export class WebRTCSignalingService {
     if (!this.messageHandlers.has(type)) {
       this.messageHandlers.set(type, []);
     }
-    this.messageHandlers.get(type)!.push(handler);
+    this.messageHandlers.get(type).push(handler);
   }
 
   /**
@@ -161,10 +173,15 @@ export class WebRTCSignalingService {
    * Send an offer to a specific peer
    */
   sendOffer(roomId: string, targetId: string, offer: RTCSessionDescriptionInit): void {
+    if (!this.currentUserId) {
+      console.error('[SignalingService] Cannot send offer - not authenticated');
+      return;
+    }
+
     const message: SignalingMessage = {
       type: 'offer',
       roomId,
-      senderId: this.currentUserId!,
+      senderId: this.currentUserId,
       targetId,
       data: offer,
       timestamp: new Date().toISOString(),
@@ -178,10 +195,15 @@ export class WebRTCSignalingService {
    * Send an answer to a specific peer
    */
   sendAnswer(roomId: string, targetId: string, answer: RTCSessionDescriptionInit): void {
+    if (!this.currentUserId) {
+      console.error('[SignalingService] Cannot send answer - not authenticated');
+      return;
+    }
+
     const message: SignalingMessage = {
       type: 'answer',
       roomId,
-      senderId: this.currentUserId!,
+      senderId: this.currentUserId,
       targetId,
       data: answer,
       timestamp: new Date().toISOString(),
@@ -195,10 +217,15 @@ export class WebRTCSignalingService {
    * Send an ICE candidate to a specific peer
    */
   sendIceCandidate(roomId: string, targetId: string, candidate: RTCIceCandidateInit): void {
+    if (!this.currentUserId) {
+      console.error('[SignalingService] Cannot send ICE candidate - not authenticated');
+      return;
+    }
+
     const message: SignalingMessage = {
       type: 'ice-candidate',
       roomId,
-      senderId: this.currentUserId!,
+      senderId: this.currentUserId,
       targetId,
       data: candidate,
       timestamp: new Date().toISOString(),
