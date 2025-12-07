@@ -58,6 +58,7 @@ io.on('connection', (socket) => {
 
   // Relay WebRTC signals
   socket.on('signal', ({ targetUserId, signal }) => {
+    console.log(`[SIGNAL] From ${socket.id} to ${targetUserId}, type: ${signal.type || 'unknown'}`);
     let targetSocketId = null;
 
     rooms.forEach((users) => {
@@ -79,11 +80,16 @@ io.on('connection', (socket) => {
       });
 
       if (fromUserId) {
+        console.log(`[SIGNAL] Relaying from ${fromUserId} to ${targetUserId} (socket: ${targetSocketId})`);
         io.to(targetSocketId).emit('signal', {
           fromUserId,
           signal
         });
+      } else {
+        console.error(`[SIGNAL] Could not find sender userId for socket ${socket.id}`);
       }
+    } else {
+      console.error(`[SIGNAL] Could not find target socket for userId ${targetUserId}`);
     }
   });
 

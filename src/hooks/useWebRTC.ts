@@ -82,14 +82,20 @@ export const useWebRTC = ({
       const peer = new SimplePeer({
         initiator: true,
         stream: streamRef.current,
-        trickle: true
+        trickle: true,
+        config: {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+          ]
+        }
       });
 
       console.log('[CLIENT] Created peer as INITIATOR for', newUserId);
 
       // When peer generates signal, send to socket
       peer.on('signal', (signal) => {
-        console.log('[CLIENT] Sending signal to', newUserId);
+        console.log('[CLIENT] Sending signal to', newUserId, 'type:', signal.type);
         socket.emit('signal', {
           targetUserId: newUserId,
           signal
@@ -112,9 +118,19 @@ export const useWebRTC = ({
         });
       });
 
+      // Handle connection
+      peer.on('connect', () => {
+        console.log('[CLIENT] Peer connected successfully with', newUserId);
+      });
+
       // Handle errors
       peer.on('error', (err) => {
         console.error('[CLIENT] Peer error with', newUserId, ':', err);
+      });
+
+      // Handle close
+      peer.on('close', () => {
+        console.log('[CLIENT] Peer connection closed with', newUserId);
       });
 
       peersRef.current.set(newUserId, peer);
@@ -138,11 +154,17 @@ export const useWebRTC = ({
         const peer = new SimplePeer({
           initiator: false,
           stream: streamRef.current!,
-          trickle: true
+          trickle: true,
+          config: {
+            iceServers: [
+              { urls: 'stun:stun.l.google.com:19302' },
+              { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+          }
         });
 
         peer.on('signal', (signal) => {
-          console.log('[CLIENT] Sending signal to existing user', existingUserId);
+          console.log('[CLIENT] Sending signal to existing user', existingUserId, 'type:', signal.type);
           socket.emit('signal', {
             targetUserId: existingUserId,
             signal
@@ -164,8 +186,16 @@ export const useWebRTC = ({
           });
         });
 
+        peer.on('connect', () => {
+          console.log('[CLIENT] Peer connected successfully with existing user', existingUserId);
+        });
+
         peer.on('error', (err) => {
           console.error('[CLIENT] Peer error with existing user', existingUserId, ':', err);
+        });
+
+        peer.on('close', () => {
+          console.log('[CLIENT] Peer connection closed with existing user', existingUserId);
         });
 
         peersRef.current.set(existingUserId, peer);
@@ -179,13 +209,18 @@ export const useWebRTC = ({
       fromUserId: string;
       signal: any;
     }) => {
-      console.log('[CLIENT] Received signal from', fromUserId);
+      console.log('[CLIENT] Received signal from', fromUserId, 'type:', signal.type);
       const peer = peersRef.current.get(fromUserId);
       if (peer) {
         console.log('[CLIENT] Found peer for', fromUserId, ', passing signal');
-        peer.signal(signal);
+        try {
+          peer.signal(signal);
+        } catch (error) {
+          console.error('[CLIENT] Error signaling peer', fromUserId, ':', error);
+        }
       } else {
         console.error('[CLIENT] No peer found for', fromUserId, '! Available peers:', Array.from(peersRef.current.keys()));
+        console.error('[CLIENT] This might be a race condition - signal arrived before peer was created');
       }
     };
 
@@ -246,6 +281,8 @@ export const useWebRTC = ({
     }
 
     console.log('useWebRTC: Emitting join-room NOW');
+    // Ensure stream is set in ref before joining
+    streamRef.current = localStream;
     socket.emit('join-room', { roomId, userId, userName });
   }, [socket, isConnected, localStream, roomId, userId, userName]);
 
