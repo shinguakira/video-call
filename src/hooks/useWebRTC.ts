@@ -72,9 +72,17 @@ export const useWebRTC = ({
     }) => {
       console.log('[CLIENT] Received user-joined event:', { newUserId, newUserName });
       console.log('[CLIENT] Current peers:', Array.from(peersRef.current.keys()));
+      console.log('[CLIENT] Current stream available:', !!streamRef.current);
 
       if (!streamRef.current) {
-        console.error('[CLIENT] Cannot create peer - no local stream');
+        console.error('[CLIENT] Cannot create peer - no local stream available yet');
+        console.error('[CLIENT] This is a critical error - user-joined fired before stream was ready');
+        return;
+      }
+
+      // Check if peer already exists (prevent duplicates)
+      if (peersRef.current.has(newUserId)) {
+        console.warn('[CLIENT] Peer already exists for', newUserId, '- skipping duplicate creation');
         return;
       }
 
@@ -141,14 +149,22 @@ export const useWebRTC = ({
     const handleExistingUsers = (existingUsers: Array<{ userId: string; userName: string }>) => {
       console.log('[CLIENT] Received existing-users event:', existingUsers);
       console.log('[CLIENT] Will create', existingUsers.length, 'peer connections as NON-INITIATOR');
+      console.log('[CLIENT] Current stream available:', !!streamRef.current);
       
       if (!streamRef.current) {
-        console.error('[CLIENT] Cannot create peers - no local stream');
+        console.error('[CLIENT] Cannot create peers - no local stream available yet');
+        console.error('[CLIENT] This is a critical error - existing-users fired before stream was ready');
         return;
       }
 
       existingUsers.forEach(({ userId: existingUserId, userName: existingUserName }) => {
         console.log('[CLIENT] Creating peer for existing user:', existingUserId);
+        
+        // Check if peer already exists (prevent duplicates)
+        if (peersRef.current.has(existingUserId)) {
+          console.warn('[CLIENT] Peer already exists for existing user', existingUserId, '- skipping');
+          return;
+        }
         
         // Create peer connection (we are NOT initiator)
         const peer = new SimplePeer({
