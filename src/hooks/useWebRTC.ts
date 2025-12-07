@@ -291,6 +291,12 @@ export const useWebRTC = ({
           return newPeers;
         });
       }
+
+      // Clean up any buffered signals for this user to prevent memory leaks
+      if (pendingSignals.has(leftUserId)) {
+        console.log('[CLIENT] Cleaning up buffered signals for left user:', leftUserId);
+        pendingSignals.delete(leftUserId);
+      }
     };
 
     // Register socket event listeners
