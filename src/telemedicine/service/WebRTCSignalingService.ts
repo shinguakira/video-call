@@ -26,13 +26,13 @@ export class WebRTCSignalingService {
 
   /**
    * Connect to Socket.IO signaling server
-   * @param url - Ignored parameter for backward compatibility. Always connects to localhost:4001
+   * @param url - Optional URL override. Defaults to localhost:4001 if not provided.
    */
   async connect(url?: string): Promise<void> {
     return new Promise((resolve, reject) => {
       try {
-        // Always connect to the Socket.IO server on port 4001
-        const socketUrl = 'http://localhost:4001';
+        // Use provided URL or default to Socket.IO server on port 4001
+        const socketUrl = url || process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4001';
         console.log('[SignalingService] Connecting to Socket.IO server:', socketUrl);
         
         this.socket = io(socketUrl, {
@@ -103,25 +103,24 @@ export class WebRTCSignalingService {
       console.log('[SignalingService] Received signal from:', fromUserId, 'type:', signal.type);
       
       // Determine message type based on signal content
-      let messageType: 'offer' | 'answer' | 'ice-candidate' = 'offer';
-      let messageData = signal;
+      let messageType: 'offer' | 'answer' | 'ice-candidate';
       
       if (signal.type === 'offer') {
         messageType = 'offer';
-        messageData = signal;
       } else if (signal.type === 'answer') {
         messageType = 'answer';
-        messageData = signal;
       } else if (signal.candidate) {
         messageType = 'ice-candidate';
-        messageData = signal;
+      } else {
+        console.warn('[SignalingService] Unknown signal type, defaulting to offer:', signal);
+        messageType = 'offer';
       }
 
       const message: SignalingMessage = {
         type: messageType,
         senderId: fromUserId,
         targetId: this.currentUserId || undefined,
-        data: messageData,
+        data: signal,
         roomId: this.currentRoomId || undefined,
         timestamp: new Date().toISOString(),
       };
