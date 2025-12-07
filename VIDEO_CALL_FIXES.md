@@ -19,21 +19,24 @@ The video call application had issues with WebRTC offer/answer exchange and ICE 
 
 ## Root Causes Identified
 
-### 1. Missing WebRTCSignalingService
-The test files referenced a `WebRTCSignalingService` class that didn't exist in the codebase. This service provides a clean abstraction for WebSocket-based WebRTC signaling.
+### 1. **CRITICAL: Endpoint Mismatch**
+Test files tried to connect to `ws://localhost:8080` (WebSocket) but the server runs Socket.IO on port 4001.
 
-### 2. Missing ICE Server Configuration
+### 2. **CRITICAL: Offer Receive Race Condition** 
+Offers could arrive before peer connections were created, causing them to be dropped. This is why "offer receive won't work properly".
+
+### 3. Missing ICE Server Configuration
 The SimplePeer instances were created without STUN server configuration, which is needed for NAT traversal and proper ICE candidate gathering.
 
-### 3. Insufficient Logging
+### 4. Insufficient Logging
 There was minimal logging for debugging WebRTC connection issues, making it difficult to diagnose offer/answer exchange problems.
 
-### 4. Potential Race Conditions
+### 5. Other Race Conditions
 - Peer connections could be created before media streams were ready
 - No duplicate peer prevention checks
 - Socket event handlers could potentially create multiple peer connections for the same user
 
-### 5. Test Files Issues
+### 6. Test Files Issues
 - Incorrect import paths for WebRTCSignalingService
 - Dependency on styled-components which wasn't installed
 
@@ -109,6 +112,30 @@ if (peersRef.current.has(newUserId)) {
 streamRef.current = localStream;
 socket.emit('join-room', { roomId, userId, userName });
 ```
+
+#### **CRITICAL: Signal Buffering (Fixes Offer Receive)**
+```typescript
+// Buffer signals that arrive before peer is created
+const pendingSignals = new Map<string, any[]>();
+
+// If peer doesn't exist yet, buffer the signal
+if (!peer) {
+  console.warn('[CLIENT] Buffering signal for', fromUserId);
+  if (!pendingSignals.has(fromUserId)) {
+    pendingSignals.set(fromUserId, []);
+  }
+  pendingSignals.get(fromUserId).push(signal);
+}
+
+// After creating peer, process buffered signals
+const buffered = pendingSignals.get(userId);
+if (buffered && buffered.length > 0) {
+  buffered.forEach(signal => peer.signal(signal));
+  pendingSignals.delete(userId);
+}
+```
+
+**Why This Is Critical:** When User B joins, User A immediately sends an OFFER. But if the OFFER arrives before User B finishes creating their peer connection, it would be dropped, causing "offer receive won't work properly". Signal buffering ensures all offers are processed.
 
 ### 5. Fixed Test Files
 - Updated import paths from `../telemedicine/...` to `./telemedicine/...`
@@ -248,12 +275,14 @@ Look for these log patterns:
 2. Verify camera/mic permissions granted
 3. Check ICE connection state in logs
 4. Verify STUN servers are accessible
+5. **NEW:** Look for "Buffering signal" logs - if signals are buffered but never processed, peer creation failed
 
-#### Signals Not Being Received
-1. Check server logs for signal relay operations
-2. Verify both users are in the same room
-3. Check that socket connections are stable
-4. Look for "No peer found" errors
+#### Offers/Answers Not Being Received
+1. **FIXED:** Race condition where offers arrive before peer is created - signals are now buffered
+2. Check logs for "Buffering signal" and "Processing buffered signals" messages
+3. Check server logs for signal relay operations
+4. Verify both users are in the same room
+5. Check that socket connections are stable
 
 #### Duplicate Connections
 - Now prevented automatically
