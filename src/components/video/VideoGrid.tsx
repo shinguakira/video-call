@@ -11,7 +11,6 @@ interface Peer {
 interface VideoGridProps {
   localStream: MediaStream | null;
   peers: Map<string, Peer>;
-  localUserId: string;
   localUserName?: string;
   isAudioEnabled?: boolean;
   isVideoEnabled?: boolean;
@@ -20,7 +19,6 @@ interface VideoGridProps {
 export const VideoGrid = ({
   localStream,
   peers,
-  localUserId,
   localUserName = "You",
   isAudioEnabled = true,
   isVideoEnabled = true,
@@ -56,7 +54,6 @@ export const VideoGrid = ({
       <div className={getVideoHeight()}>
         <VideoTile
           stream={localStream}
-          peerId={localUserId}
           isLocal={true}
           isMuted={!isAudioEnabled}
           isVideoOff={!isVideoEnabled}
@@ -67,12 +64,7 @@ export const VideoGrid = ({
       {/* Remote peers */}
       {Array.from(peers.values()).map((peer) => (
         <div key={peer.peerId} className={getVideoHeight()}>
-          <VideoTile
-            stream={peer.stream}
-            peerId={peer.peerId}
-            isLocal={false}
-            name={peer.userName}
-          />
+          <VideoTile stream={peer.stream} isLocal={false} name={peer.userName} />
         </div>
       ))}
     </div>

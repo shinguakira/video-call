@@ -7,7 +7,6 @@ import { Mic, MicOff, User } from "lucide-react";
 
 interface VideoTileProps {
   stream: MediaStream | null;
-  peerId: string;
   isLocal?: boolean;
   isMuted?: boolean;
   isVideoOff?: boolean;
@@ -16,7 +15,6 @@ interface VideoTileProps {
 
 export const VideoTile = ({
   stream,
-  peerId: _peerId,
   isLocal = false,
   isMuted = false,
   isVideoOff = false,

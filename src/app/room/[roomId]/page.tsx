@@ -74,7 +74,6 @@ function RoomContent() {
           <VideoGrid
             localStream={localStream}
             peers={peers}
-            localUserId={userId}
             localUserName={userName}
             isAudioEnabled={isAudioEnabled}
             isVideoEnabled={isVideoEnabled}
