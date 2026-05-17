@@ -20,14 +20,23 @@ io.on('connection', (socket) => {
 
   // Join room
   socket.on('join-room', ({ roomId, userId, userName }) => {
-    console.log(`[JOIN] User ${userId} (${userName}) joining room ${roomId}`);
-    socket.join(roomId);
-
     if (!rooms.has(roomId)) {
       rooms.set(roomId, new Map());
     }
 
     const room = rooms.get(roomId);
+
+    // Idempotent: React Strict Mode (and reconnects) can emit join-room twice
+    // for the same user+socket. Ignore the duplicate so we don't send
+    // existing-users back to the user with themselves included.
+    if (room.get(userId)?.socketId === socket.id) {
+      console.log(`[JOIN] Duplicate join-room ignored for ${userId}`);
+      return;
+    }
+
+    console.log(`[JOIN] User ${userId} (${userName}) joining room ${roomId}`);
+    socket.join(roomId);
+
     const existingUsers = Array.from(room.values());
 
     console.log(`[JOIN] Room ${roomId} had ${existingUsers.length} existing users`);
