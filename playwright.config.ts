@@ -10,8 +10,8 @@ export default defineConfig({
   reporter: [['html', { outputFolder: 'playwright-report' }], ['list']],
   use: {
     baseURL: 'http://localhost:3000',
-    trace: 'on-first-retry',
-    screenshot: 'only-on-failure',
+    trace: 'on',
+    screenshot: 'on',
     // Fake camera/mic so getUserMedia resolves without real hardware
     launchOptions: {
       args: [
