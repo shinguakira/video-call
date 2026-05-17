@@ -86,6 +86,7 @@ export const ControlPanel = ({
               <Button
                 variant="outline"
                 size="icon"
+                aria-label="Toggle chat"
                 className="w-12 h-12 rounded-full"
                 onClick={onToggleChat}
               >
@@ -104,6 +105,7 @@ export const ControlPanel = ({
             <Button
               variant="destructive"
               size="icon"
+              aria-label="Leave call"
               className="w-12 h-12 rounded-full"
               onClick={onLeave}
             >

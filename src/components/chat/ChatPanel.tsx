@@ -83,7 +83,7 @@ export const ChatPanel = ({ socket, roomId, userId, userName, onClose }: ChatPan
     <div className="fixed right-0 top-0 bottom-20 w-80 bg-background border-l shadow-xl flex flex-col z-10">
       <div className="p-4 border-b flex items-center justify-between">
         <h3 className="font-semibold">In-call messages</h3>
-        <Button variant="ghost" size="icon" onClick={onClose}>
+        <Button variant="ghost" size="icon" aria-label="Close chat" onClick={onClose}>
           <X className="w-4 h-4" />
         </Button>
       </div>
@@ -123,7 +123,7 @@ export const ChatPanel = ({ socket, roomId, userId, userName, onClose }: ChatPan
           onChange={(e) => setNewMessage(e.target.value)}
           className="flex-1"
         />
-        <Button type="submit" size="icon" disabled={!newMessage.trim()}>
+        <Button type="submit" size="icon" aria-label="Send message" disabled={!newMessage.trim()}>
           <Send className="w-4 h-4" />
         </Button>
       </form>
