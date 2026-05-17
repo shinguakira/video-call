@@ -1,4 +1,4 @@
-import { Page } from '@playwright/test';
+import { Page } from "@playwright/test";
 
 /**
  * Injects a no-op Socket.IO mock so the room page reaches the "connected"
@@ -15,9 +15,7 @@ export async function mockSocket(page: Page) {
         return this;
       }
       off(event: string, fn: (...args: unknown[]) => void) {
-        this._handlers[event] = (this._handlers[event] ?? []).filter(
-          (h) => h !== fn,
-        );
+        this._handlers[event] = (this._handlers[event] ?? []).filter((h) => h !== fn);
         return this;
       }
       emit(event: string, ...args: unknown[]) {
@@ -27,7 +25,7 @@ export async function mockSocket(page: Page) {
     }
 
     class FakeSocket extends FakeEmitter {
-      id = 'mock-socket-id';
+      id = "mock-socket-id";
       connected = true;
 
       connect() {
@@ -49,19 +47,15 @@ export async function mockSocket(page: Page) {
 
     // Simulate "connect" event after a short delay so hooks can register
     // their listeners first.
-    window.addEventListener('load', () => {
+    window.addEventListener("load", () => {
       setTimeout(() => {
-        fakeSocket.emit('connect');
+        fakeSocket.emit("connect");
       }, 100);
     });
   });
 }
 
 /** Navigate to a room and wait for the main UI (past the loading spinner). */
-export async function gotoRoom(
-  page: Page,
-  roomId = 'test-room-123',
-  name = 'Test User',
-) {
+export async function gotoRoom(page: Page, roomId = "test-room-123", name = "Test User") {
   await page.goto(`/room/${roomId}?name=${encodeURIComponent(name)}`);
 }

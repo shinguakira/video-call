@@ -1,10 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import styled from 'styled-components';
+import React, { useCallback, useEffect, useRef, useState } from "react";
+import styled from "styled-components";
 
 import {
   SignalingMessage,
   WebRTCSignalingService,
-} from '../telemedicine/service/WebRTCSignalingService';
+} from "../telemedicine/service/WebRTCSignalingService";
 
 const Container = styled.div`
   padding: 2rem;
@@ -50,13 +50,13 @@ const ControlPanel = styled.div`
   flex-wrap: wrap;
 `;
 
-const Button = styled.button<{ variant?: 'primary' | 'danger' }>`
+const Button = styled.button<{ variant?: "primary" | "danger" }>`
   padding: 0.75rem 1.5rem;
   border: none;
   border-radius: 4px;
   font-size: 1rem;
   cursor: pointer;
-  background: ${(props) => (props.variant === 'danger' ? '#dc3545' : '#007bff')};
+  background: ${(props) => (props.variant === "danger" ? "#dc3545" : "#007bff")};
   color: white;
 
   &:hover {
@@ -92,23 +92,23 @@ const LogPanel = styled.div`
   font-size: 0.875rem;
 `;
 
-const LogEntry = styled.div<{ level: 'info' | 'warn' | 'error' }>`
+const LogEntry = styled.div<{ level: "info" | "warn" | "error" }>`
   margin-bottom: 0.25rem;
   color: ${(props) => {
     switch (props.level) {
-      case 'error':
-        return '#f48771';
-      case 'warn':
-        return '#dcdcaa';
+      case "error":
+        return "#f48771";
+      case "warn":
+        return "#dcdcaa";
       default:
-        return '#d4d4d4';
+        return "#d4d4d4";
     }
   }};
 `;
 
 interface LogMessage {
   timestamp: string;
-  level: 'info' | 'warn' | 'error';
+  level: "info" | "warn" | "error";
   message: string;
 }
 
@@ -124,16 +124,16 @@ const WebRTCTestPage: React.FC = () => {
 
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [isPolite, setIsPolite] = useState(true);
-  const [connectionState, setConnectionState] = useState<string>('new');
-  const [iceConnectionState, setIceConnectionState] = useState<string>('new');
-  const [signalingState, setSignalingState] = useState<string>('stable');
+  const [connectionState, setConnectionState] = useState<string>("new");
+  const [iceConnectionState, setIceConnectionState] = useState<string>("new");
+  const [signalingState, setSignalingState] = useState<string>("stable");
   const [logs, setLogs] = useState<LogMessage[]>([]);
-  const [roomId, setRoomId] = useState<string>('test-room-1');
+  const [roomId, setRoomId] = useState<string>("test-room-1");
   const [userId, setUserId] = useState<string>(`user-${Date.now()}`);
   const [isSignalingConnected, setIsSignalingConnected] = useState(false);
   const [remoteUserId, setRemoteUserId] = useState<string | null>(null);
 
-  const addLog = (level: 'info' | 'warn' | 'error', message: string) => {
+  const addLog = (level: "info" | "warn" | "error", message: string) => {
     const timestamp = new Date().toLocaleTimeString();
     setLogs((prev) => [...prev, { timestamp, level, message }]);
   };
@@ -141,73 +141,73 @@ const WebRTCTestPage: React.FC = () => {
   // シグナリングサーバーに接続
   const connectSignaling = useCallback(async () => {
     try {
-      addLog('info', '🔌 Connecting to signaling server...');
+      addLog("info", "🔌 Connecting to signaling server...");
       const service = new WebRTCSignalingService();
       signalingServiceRef.current = service;
 
-      await service.connect('/ws/telemedicine');
+      await service.connect("/ws/telemedicine");
       setIsSignalingConnected(true);
-      addLog('info', '✅ Connected to signaling server');
+      addLog("info", "✅ Connected to signaling server");
 
       // メッセージハンドラーを設定
-      service.onMessage('join', (message: SignalingMessage) => {
+      service.onMessage("join", (message: SignalingMessage) => {
         const currentSessionId = service.getSessionId();
-        addLog('info', `👤 User joined: ${message.senderId}`);
-        addLog('info', `📊 My session ID: ${currentSessionId}, My user ID: ${userId}`);
+        addLog("info", `👤 User joined: ${message.senderId}`);
+        addLog("info", `📊 My session ID: ${currentSessionId}, My user ID: ${userId}`);
 
         if (message.senderId !== currentSessionId && message.senderId !== userId) {
-          addLog('info', `🎯 Remote user detected: ${message.senderId}`);
-          addLog('info', `📊 Setting remote user ID to: ${message.senderId}`);
+          addLog("info", `🎯 Remote user detected: ${message.senderId}`);
+          addLog("info", `📊 Setting remote user ID to: ${message.senderId}`);
           setRemoteUserId(message.senderId);
           remoteUserIdRef.current = message.senderId;
 
           // 自動的にofferを送信しない - 手動ボタンで制御
-          addLog('info', '✅ Remote user ready. Click "Send Offer" to initiate connection.');
+          addLog("info", '✅ Remote user ready. Click "Send Offer" to initiate connection.');
         } else {
-          addLog('info', `ℹ️ Ignoring own join message`);
+          addLog("info", `ℹ️ Ignoring own join message`);
         }
       });
 
-      service.onMessage('offer', async (message: SignalingMessage) => {
-        addLog('info', `📥 Received offer from: ${message.senderId}`);
+      service.onMessage("offer", async (message: SignalingMessage) => {
+        addLog("info", `📥 Received offer from: ${message.senderId}`);
         // リモートユーザーIDを設定（まだ設定されていない場合）
         if (!remoteUserIdRef.current) {
           setRemoteUserId(message.senderId);
           remoteUserIdRef.current = message.senderId;
-          addLog('info', `🎯 Set remote user from offer: ${message.senderId}`);
+          addLog("info", `🎯 Set remote user from offer: ${message.senderId}`);
         }
         await handleOffer(message.data as RTCSessionDescriptionInit);
       });
 
-      service.onMessage('answer', async (message: SignalingMessage) => {
-        addLog('info', `📥 Received answer from: ${message.senderId}`);
+      service.onMessage("answer", async (message: SignalingMessage) => {
+        addLog("info", `📥 Received answer from: ${message.senderId}`);
         // リモートユーザーIDを設定（まだ設定されていない場合）
         if (!remoteUserIdRef.current) {
           setRemoteUserId(message.senderId);
           remoteUserIdRef.current = message.senderId;
-          addLog('info', `🎯 Set remote user from answer: ${message.senderId}`);
+          addLog("info", `🎯 Set remote user from answer: ${message.senderId}`);
         }
         await handleAnswer(message.data as RTCSessionDescriptionInit);
       });
 
-      service.onMessage('ice-candidate', async (message: SignalingMessage) => {
-        addLog('info', `🧊 Received ICE candidate from: ${message.senderId}`);
+      service.onMessage("ice-candidate", async (message: SignalingMessage) => {
+        addLog("info", `🧊 Received ICE candidate from: ${message.senderId}`);
         // リモートユーザーIDを設定（まだ設定されていない場合）
         if (!remoteUserIdRef.current) {
           setRemoteUserId(message.senderId);
           remoteUserIdRef.current = message.senderId;
-          addLog('info', `🎯 Set remote user from ICE: ${message.senderId}`);
+          addLog("info", `🎯 Set remote user from ICE: ${message.senderId}`);
         }
         await handleIceCandidate(message.data as RTCIceCandidateInit);
       });
 
-      service.onMessage('leave', (message: SignalingMessage) => {
-        addLog('info', `👋 User left: ${message.senderId}`);
+      service.onMessage("leave", (message: SignalingMessage) => {
+        addLog("info", `👋 User left: ${message.senderId}`);
         setRemoteUserId(null);
         remoteUserIdRef.current = null;
       });
     } catch (error) {
-      addLog('error', `❌ Failed to connect to signaling server: ${error}`);
+      addLog("error", `❌ Failed to connect to signaling server: ${error}`);
       setIsSignalingConnected(false);
     }
   }, [userId, isPolite]);
@@ -216,23 +216,23 @@ const WebRTCTestPage: React.FC = () => {
   const joinRoom = useCallback(() => {
     const service = signalingServiceRef.current;
     if (!service || !service.isConnected()) {
-      addLog('error', '❌ Not connected to signaling server');
+      addLog("error", "❌ Not connected to signaling server");
       return;
     }
 
     try {
-      addLog('info', `🚪 Joining room: ${roomId} as ${userId}`);
+      addLog("info", `🚪 Joining room: ${roomId} as ${userId}`);
       service.joinRoom(roomId, userId);
-      addLog('info', '✅ Joined room successfully');
+      addLog("info", "✅ Joined room successfully");
     } catch (error) {
-      addLog('error', `❌ Failed to join room: ${error}`);
+      addLog("error", `❌ Failed to join room: ${error}`);
     }
   }, [roomId, userId]);
 
   // ローカルストリーム取得
   const startLocalStream = async () => {
     try {
-      addLog('info', 'Requesting local media stream...');
+      addLog("info", "Requesting local media stream...");
       const stream = await navigator.mediaDevices.getUserMedia({
         video: true,
         audio: true,
@@ -242,19 +242,19 @@ const WebRTCTestPage: React.FC = () => {
       if (localVideoRef.current) {
         localVideoRef.current.srcObject = stream;
       }
-      addLog('info', '✅ Local stream started');
+      addLog("info", "✅ Local stream started");
     } catch (error) {
-      addLog('error', `❌ Failed to get local stream: ${error}`);
+      addLog("error", `❌ Failed to get local stream: ${error}`);
     }
   };
 
   // PeerConnection初期化
   const initializePeerConnection = () => {
     try {
-      addLog('info', 'Initializing PeerConnection...');
+      addLog("info", "Initializing PeerConnection...");
 
       const configuration: RTCConfiguration = {
-        iceServers: [{ urls: 'stun:stun.l.google.com:19302' }],
+        iceServers: [{ urls: "stun:stun.l.google.com:19302" }],
       };
 
       const pc = new RTCPeerConnection(configuration);
@@ -264,13 +264,13 @@ const WebRTCTestPage: React.FC = () => {
       if (localStream) {
         localStream.getTracks().forEach((track) => {
           pc.addTrack(track, localStream);
-          addLog('info', `Added ${track.kind} track to PeerConnection`);
+          addLog("info", `Added ${track.kind} track to PeerConnection`);
         });
       }
 
       // リモートトラック受信
       pc.ontrack = (event) => {
-        addLog('info', `📥 Received remote ${event.track.kind} track`);
+        addLog("info", `📥 Received remote ${event.track.kind} track`);
         if (remoteVideoRef.current && event.streams[0]) {
           remoteVideoRef.current.srcObject = event.streams[0];
         }
@@ -279,12 +279,12 @@ const WebRTCTestPage: React.FC = () => {
       // ICE候補
       pc.onicecandidate = (event) => {
         if (event.candidate) {
-          addLog('info', `🧊 ICE candidate: ${event.candidate.candidate.substring(0, 50)}...`);
+          addLog("info", `🧊 ICE candidate: ${event.candidate.candidate.substring(0, 50)}...`);
           const service = signalingServiceRef.current;
           const targetId = remoteUserIdRef.current;
           if (service && targetId) {
             service.sendIceCandidate(roomId, targetId, event.candidate.toJSON());
-            addLog('info', `📤 Sent ICE candidate to: ${targetId}`);
+            addLog("info", `📤 Sent ICE candidate to: ${targetId}`);
           }
         }
       };
@@ -292,28 +292,28 @@ const WebRTCTestPage: React.FC = () => {
       // 接続状態変化
       pc.onconnectionstatechange = () => {
         setConnectionState(pc.connectionState);
-        addLog('info', `Connection state: ${pc.connectionState}`);
+        addLog("info", `Connection state: ${pc.connectionState}`);
       };
 
       pc.oniceconnectionstatechange = () => {
         setIceConnectionState(pc.iceConnectionState);
-        addLog('info', `ICE connection state: ${pc.iceConnectionState}`);
+        addLog("info", `ICE connection state: ${pc.iceConnectionState}`);
       };
 
       pc.onsignalingstatechange = () => {
         setSignalingState(pc.signalingState);
-        addLog('info', `Signaling state: ${pc.signalingState}`);
+        addLog("info", `Signaling state: ${pc.signalingState}`);
       };
 
       // Perfect Negotiation パターン - 自動ネゴシエーションを無効化
       // テスト用に手動制御にする
       pc.onnegotiationneeded = async () => {
-        addLog('info', '🔄 Negotiation needed (auto-negotiation disabled for testing)');
+        addLog("info", "🔄 Negotiation needed (auto-negotiation disabled for testing)");
       };
 
-      addLog('info', '✅ PeerConnection initialized');
+      addLog("info", "✅ PeerConnection initialized");
     } catch (error) {
-      addLog('error', `❌ Failed to initialize PeerConnection: ${error}`);
+      addLog("error", `❌ Failed to initialize PeerConnection: ${error}`);
     }
   };
 
@@ -322,54 +322,54 @@ const WebRTCTestPage: React.FC = () => {
     try {
       const pc = pcRef.current;
       if (!pc) {
-        addLog('error', '❌ PeerConnection not initialized');
+        addLog("error", "❌ PeerConnection not initialized");
         return;
       }
 
-      addLog('info', `📥 Received offer (current state: ${pc.signalingState})`);
-      addLog('info', `📊 Offer SDP: ${description.sdp?.substring(0, 80)}...`);
-      addLog('info', `📊 makingOffer: ${makingOfferRef.current}, isPolite: ${isPolite}`);
+      addLog("info", `📥 Received offer (current state: ${pc.signalingState})`);
+      addLog("info", `📊 Offer SDP: ${description.sdp?.substring(0, 80)}...`);
+      addLog("info", `📊 makingOffer: ${makingOfferRef.current}, isPolite: ${isPolite}`);
 
       const offerCollision =
-        description.type === 'offer' && (makingOfferRef.current || pc.signalingState !== 'stable');
+        description.type === "offer" && (makingOfferRef.current || pc.signalingState !== "stable");
 
       ignoreOfferRef.current = !isPolite && offerCollision;
 
       if (ignoreOfferRef.current) {
-        addLog('warn', '⚠️ Ignoring offer due to collision (impolite)');
+        addLog("warn", "⚠️ Ignoring offer due to collision (impolite)");
         return;
       }
 
       // Polite側で衝突が発生した場合、既存のofferをロールバック
       if (offerCollision) {
-        addLog('warn', '⚠️ Offer collision detected (polite peer rolling back)');
+        addLog("warn", "⚠️ Offer collision detected (polite peer rolling back)");
         await Promise.all([
-          pc.setLocalDescription({ type: 'rollback' }),
+          pc.setLocalDescription({ type: "rollback" }),
           pc.setRemoteDescription(description),
         ]);
       } else {
         await pc.setRemoteDescription(description);
       }
 
-      addLog('info', '✅ Remote description set (offer)');
+      addLog("info", "✅ Remote description set (offer)");
 
-      if (description.type === 'offer') {
+      if (description.type === "offer") {
         await pc.setLocalDescription();
-        addLog('info', `📤 Creating and sending answer (type: ${pc.localDescription?.type})`);
+        addLog("info", `📤 Creating and sending answer (type: ${pc.localDescription?.type})`);
 
         const service = signalingServiceRef.current;
         const targetId = remoteUserIdRef.current;
         if (service && targetId && pc.localDescription) {
           const currentUserId = service.getCurrentUserId();
-          addLog('info', `📤 Sending answer from ${currentUserId} to ${targetId}`);
+          addLog("info", `📤 Sending answer from ${currentUserId} to ${targetId}`);
           service.sendAnswer(roomId, targetId, pc.localDescription);
-          addLog('info', `✅ Answer sent successfully`);
+          addLog("info", `✅ Answer sent successfully`);
         } else {
-          addLog('error', `❌ Cannot send answer: service=${!!service}, targetId=${targetId}`);
+          addLog("error", `❌ Cannot send answer: service=${!!service}, targetId=${targetId}`);
         }
       }
     } catch (error) {
-      addLog('error', `❌ Error handling offer: ${error}`);
+      addLog("error", `❌ Error handling offer: ${error}`);
     } finally {
       makingOfferRef.current = false;
     }
@@ -380,16 +380,16 @@ const WebRTCTestPage: React.FC = () => {
     try {
       const pc = pcRef.current;
       if (!pc) {
-        addLog('error', '❌ PeerConnection not initialized');
+        addLog("error", "❌ PeerConnection not initialized");
         return;
       }
 
-      addLog('info', `📥 Received answer (current state: ${pc.signalingState})`);
+      addLog("info", `📥 Received answer (current state: ${pc.signalingState})`);
       await pc.setRemoteDescription(description);
-      addLog('info', '✅ Remote description set (answer)');
+      addLog("info", "✅ Remote description set (answer)");
       makingOfferRef.current = false; // ネゴシエーション完了
     } catch (error) {
-      addLog('error', `❌ Error handling answer: ${error}`);
+      addLog("error", `❌ Error handling answer: ${error}`);
       makingOfferRef.current = false;
     }
   };
@@ -399,15 +399,15 @@ const WebRTCTestPage: React.FC = () => {
     try {
       const pc = pcRef.current;
       if (!pc) {
-        addLog('error', '❌ PeerConnection not initialized');
+        addLog("error", "❌ PeerConnection not initialized");
         return;
       }
 
       await pc.addIceCandidate(candidate);
-      addLog('info', '✅ ICE candidate added');
+      addLog("info", "✅ ICE candidate added");
     } catch (error) {
       if (!ignoreOfferRef.current) {
-        addLog('error', `❌ Error adding ICE candidate: ${error}`);
+        addLog("error", `❌ Error adding ICE candidate: ${error}`);
       }
     }
   };
@@ -440,13 +440,13 @@ const WebRTCTestPage: React.FC = () => {
       remoteVideoRef.current.srcObject = null;
     }
 
-    setConnectionState('closed');
-    setIceConnectionState('closed');
-    setSignalingState('closed');
+    setConnectionState("closed");
+    setIceConnectionState("closed");
+    setSignalingState("closed");
     setIsSignalingConnected(false);
     setRemoteUserId(null);
     remoteUserIdRef.current = null;
-    addLog('info', '🧹 Cleanup completed');
+    addLog("info", "🧹 Cleanup completed");
   }, [localStream, roomId]);
 
   // 接続を開始（手動トリガー用）
@@ -454,51 +454,51 @@ const WebRTCTestPage: React.FC = () => {
     async (targetId: string) => {
       const pc = pcRef.current;
       if (!pc) {
-        addLog('error', '❌ PeerConnection not initialized');
+        addLog("error", "❌ PeerConnection not initialized");
         return;
       }
 
       if (makingOfferRef.current) {
-        addLog('warn', '⚠️ Already making offer, skipping (waiting for answer)');
-        addLog('warn', '💡 If stuck, click Cleanup and restart');
+        addLog("warn", "⚠️ Already making offer, skipping (waiting for answer)");
+        addLog("warn", "💡 If stuck, click Cleanup and restart");
         return;
       }
 
       try {
-        addLog('info', `🚀 Initiating connection to: ${targetId} (state: ${pc.signalingState})`);
+        addLog("info", `🚀 Initiating connection to: ${targetId} (state: ${pc.signalingState})`);
         makingOfferRef.current = true;
 
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
-        addLog('info', `✅ Local description set (type: ${pc.localDescription?.type})`);
-        addLog('info', `📊 Offer SDP: ${offer.sdp?.substring(0, 80)}...`);
+        addLog("info", `✅ Local description set (type: ${pc.localDescription?.type})`);
+        addLog("info", `📊 Offer SDP: ${offer.sdp?.substring(0, 80)}...`);
 
         const service = signalingServiceRef.current;
         if (service && pc.localDescription) {
           const currentUserId = service.getCurrentUserId();
-          addLog('info', `📤 Sending offer from ${currentUserId} to ${targetId}`);
-          addLog('info', `📊 Offer details: roomId=${roomId}, targetId=${targetId}`);
-          addLog('info', `📊 SDP type: ${pc.localDescription.type}`);
+          addLog("info", `📤 Sending offer from ${currentUserId} to ${targetId}`);
+          addLog("info", `📊 Offer details: roomId=${roomId}, targetId=${targetId}`);
+          addLog("info", `📊 SDP type: ${pc.localDescription.type}`);
 
           try {
             service.sendOffer(roomId, targetId, pc.localDescription);
-            addLog('info', `✅ Offer sent successfully (check backend logs)`);
+            addLog("info", `✅ Offer sent successfully (check backend logs)`);
           } catch (error) {
-            addLog('error', `❌ Failed to send offer: ${error}`);
+            addLog("error", `❌ Failed to send offer: ${error}`);
           }
         } else {
           addLog(
-            'error',
-            `❌ Cannot send: service=${!!service}, localDesc=${!!pc.localDescription}`
+            "error",
+            `❌ Cannot send: service=${!!service}, localDesc=${!!pc.localDescription}`,
           );
         }
       } catch (error) {
-        addLog('error', `❌ Error initiating connection: ${error}`);
+        addLog("error", `❌ Error initiating connection: ${error}`);
         makingOfferRef.current = false;
       }
       // makingOfferRefはanswerを受信するまでtrueのまま
     },
-    [roomId]
+    [roomId],
   );
 
   useEffect(() => {
@@ -523,20 +523,20 @@ const WebRTCTestPage: React.FC = () => {
       </VideoContainer>
 
       <ControlPanel>
-        <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+        <div style={{ display: "flex", gap: "0.5rem", alignItems: "center" }}>
           <label>Room ID:</label>
           <input
             type="text"
             value={roomId}
             onChange={(e) => setRoomId(e.target.value)}
-            style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+            style={{ padding: "0.5rem", borderRadius: "4px", border: "1px solid #ddd" }}
           />
           <label>User ID:</label>
           <input
             type="text"
             value={userId}
             onChange={(e) => setUserId(e.target.value)}
-            style={{ padding: '0.5rem', borderRadius: '4px', border: '1px solid #ddd' }}
+            style={{ padding: "0.5rem", borderRadius: "4px", border: "1px solid #ddd" }}
           />
           <label>
             <input
@@ -572,11 +572,11 @@ const WebRTCTestPage: React.FC = () => {
           onClick={() => {
             const service = signalingServiceRef.current;
             if (service) {
-              addLog('info', '🧪 Testing: Sending test message to room topic');
+              addLog("info", "🧪 Testing: Sending test message to room topic");
               const testMsg = {
-                type: 'join' as const,
+                type: "join" as const,
                 roomId,
-                senderId: 'TEST',
+                senderId: "TEST",
                 timestamp: new Date().toISOString(),
               };
               // @ts-ignore - テスト用
@@ -594,7 +594,7 @@ const WebRTCTestPage: React.FC = () => {
 
       <StatusPanel>
         <StatusItem>
-          <strong>Role:</strong> {isPolite ? 'Polite' : 'Impolite'}
+          <strong>Role:</strong> {isPolite ? "Polite" : "Impolite"}
         </StatusItem>
         <StatusItem>
           <strong>Room ID:</strong> {roomId}
@@ -603,14 +603,14 @@ const WebRTCTestPage: React.FC = () => {
           <strong>User ID:</strong> {userId}
         </StatusItem>
         <StatusItem>
-          <strong>Signaling:</strong> {isSignalingConnected ? '✅ Connected' : '❌ Disconnected'}
+          <strong>Signaling:</strong> {isSignalingConnected ? "✅ Connected" : "❌ Disconnected"}
         </StatusItem>
         <StatusItem>
-          <strong>Remote User:</strong> {remoteUserId || '❌ Not detected'}
+          <strong>Remote User:</strong> {remoteUserId || "❌ Not detected"}
         </StatusItem>
         <StatusItem>
-          <strong>Session ID:</strong>{' '}
-          {signalingServiceRef.current?.getSessionId() || '❌ Not connected'}
+          <strong>Session ID:</strong>{" "}
+          {signalingServiceRef.current?.getSessionId() || "❌ Not connected"}
         </StatusItem>
         <StatusItem>
           <strong>Subscriptions:</strong> Listening on /user/queue/telemedicine/*
@@ -625,10 +625,10 @@ const WebRTCTestPage: React.FC = () => {
           <strong>Signaling State:</strong> {signalingState}
         </StatusItem>
         <StatusItem>
-          <strong>Local Stream:</strong> {localStream ? '✅ Active' : '❌ Not started'}
+          <strong>Local Stream:</strong> {localStream ? "✅ Active" : "❌ Not started"}
         </StatusItem>
         <StatusItem>
-          <strong>PeerConnection:</strong> {pcRef.current ? '✅ Initialized' : '❌ Not initialized'}
+          <strong>PeerConnection:</strong> {pcRef.current ? "✅ Initialized" : "❌ Not initialized"}
         </StatusItem>
       </StatusPanel>
 
@@ -641,10 +641,10 @@ const WebRTCTestPage: React.FC = () => {
       </LogPanel>
 
       <div
-        style={{ marginTop: '1rem', padding: '1rem', background: '#d1ecf1', borderRadius: '4px' }}
+        style={{ marginTop: "1rem", padding: "1rem", background: "#d1ecf1", borderRadius: "4px" }}
       >
         <strong>Instructions:</strong>
-        <ol style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+        <ol style={{ marginTop: "0.5rem", marginBottom: 0 }}>
           <li>Open this page in two different browser tabs/windows</li>
           <li>
             <strong>Tab 1 (Polite):</strong> Room ID: test-room-1, User ID: user-1, Polite: ✅
@@ -668,15 +668,15 @@ const WebRTCTestPage: React.FC = () => {
 
       <div
         style={{
-          marginTop: '1rem',
-          padding: '1rem',
-          background: '#fff3cd',
-          borderRadius: '4px',
-          fontSize: '0.9rem',
+          marginTop: "1rem",
+          padding: "1rem",
+          background: "#fff3cd",
+          borderRadius: "4px",
+          fontSize: "0.9rem",
         }}
       >
         <strong>⚠️ Troubleshooting:</strong>
-        <ul style={{ marginTop: '0.5rem', marginBottom: 0 }}>
+        <ul style={{ marginTop: "0.5rem", marginBottom: 0 }}>
           <li>
             If you see "Already making offer, skipping" - wait for answer or click Cleanup and
             restart

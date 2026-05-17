@@ -1,29 +1,23 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef, Suspense } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { Mic, MicOff, Video, VideoOff } from 'lucide-react';
-import { useMediaStream } from '@/hooks/useMediaStream';
+import { useState, useEffect, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { Mic, MicOff, Video, VideoOff } from "lucide-react";
+import { useMediaStream } from "@/hooks/useMediaStream";
 
 function LobbyContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const roomId = searchParams.get('roomId');
-  
-  const [name, setName] = useState('');
+  const roomId = searchParams.get("roomId");
+
+  const [name, setName] = useState("");
   const videoRef = useRef<HTMLVideoElement>(null);
-  
-  const { 
-    stream, 
-    toggleAudio, 
-    toggleVideo, 
-    isAudioEnabled, 
-    isVideoEnabled 
-  } = useMediaStream();
+
+  const { stream, toggleAudio, toggleVideo, isAudioEnabled, isVideoEnabled } = useMediaStream();
 
   useEffect(() => {
     if (videoRef.current && stream) {
@@ -33,7 +27,7 @@ function LobbyContent() {
 
   useEffect(() => {
     // Load saved name
-    const savedName = localStorage.getItem('userName');
+    const savedName = localStorage.getItem("userName");
     if (savedName) setName(savedName);
   }, []);
 
@@ -42,8 +36,8 @@ function LobbyContent() {
     if (!name.trim() || !roomId) return;
 
     // Save name for next time
-    localStorage.setItem('userName', name);
-    
+    localStorage.setItem("userName", name);
+
     // Navigate to room
     router.push(`/room/${roomId}?name=${encodeURIComponent(name)}`);
   };
@@ -54,7 +48,7 @@ function LobbyContent() {
         <Card>
           <CardContent className="pt-6">
             <p>Invalid room ID. Please return home.</p>
-            <Button onClick={() => router.push('/')} className="mt-4 w-full">
+            <Button onClick={() => router.push("/")} className="mt-4 w-full">
               Go Home
             </Button>
           </CardContent>
@@ -76,14 +70,14 @@ function LobbyContent() {
                 autoPlay
                 playsInline
                 muted
-                className={`w-full h-full object-cover ${!isVideoEnabled ? 'hidden' : ''}`}
+                className={`w-full h-full object-cover ${!isVideoEnabled ? "hidden" : ""}`}
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-white">
                 Loading camera...
               </div>
             )}
-            
+
             {!isVideoEnabled && (
               <div className="absolute inset-0 flex items-center justify-center bg-gray-900 text-white">
                 Camera is off
@@ -92,7 +86,7 @@ function LobbyContent() {
 
             <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-4">
               <Button
-                variant={isAudioEnabled ? 'secondary' : 'destructive'}
+                variant={isAudioEnabled ? "secondary" : "destructive"}
                 size="icon"
                 className="rounded-full"
                 onClick={toggleAudio}
@@ -100,7 +94,7 @@ function LobbyContent() {
                 {isAudioEnabled ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
               </Button>
               <Button
-                variant={isVideoEnabled ? 'secondary' : 'destructive'}
+                variant={isVideoEnabled ? "secondary" : "destructive"}
                 size="icon"
                 className="rounded-full"
                 onClick={toggleVideo}
@@ -132,13 +126,11 @@ function LobbyContent() {
 
                 <div className="space-y-2">
                   <Label>Room ID</Label>
-                  <div className="p-3 bg-muted rounded-md font-mono text-sm">
-                    {roomId}
-                  </div>
+                  <div className="p-3 bg-muted rounded-md font-mono text-sm">{roomId}</div>
                 </div>
 
                 <div className="flex gap-2">
-                  <Button type="button" variant="outline" onClick={() => router.push('/')}>
+                  <Button type="button" variant="outline" onClick={() => router.push("/")}>
                     Cancel
                   </Button>
                   <Button type="submit" className="flex-1">
@@ -156,7 +148,9 @@ function LobbyContent() {
 
 export default function LobbyPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+    <Suspense
+      fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}
+    >
       <LobbyContent />
     </Suspense>
   );

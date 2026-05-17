@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
-import { Socket } from 'socket.io-client';
-import { getSocket } from '@/lib/socket';
+import { useState, useEffect, useRef } from "react";
+import { Socket } from "socket.io-client";
+import { getSocket } from "@/lib/socket";
 
 interface UseSocketReturn {
   socket: Socket | null;
@@ -18,47 +18,47 @@ export const useSocket = (): UseSocketReturn => {
     socketRef.current = socketInstance;
 
     const onConnect = () => {
-      console.log('Socket connected');
+      console.log("Socket connected");
       setIsConnected(true);
     };
 
     const onDisconnect = () => {
-      console.log('Socket disconnected');
+      console.log("Socket disconnected");
       setIsConnected(false);
     };
 
     const onConnectError = (err: Error) => {
-      console.error('Socket connection error:', err);
+      console.error("Socket connection error:", err);
       setIsConnected(false);
     };
 
-    socketInstance.on('connect', onConnect);
-    socketInstance.on('disconnect', onDisconnect);
-    socketInstance.on('connect_error', onConnectError);
+    socketInstance.on("connect", onConnect);
+    socketInstance.on("disconnect", onDisconnect);
+    socketInstance.on("connect_error", onConnectError);
 
     if (socketInstance.connected) {
       setIsConnected(true);
     } else {
-      console.log('Socket disconnected, attempting to connect...');
+      console.log("Socket disconnected, attempting to connect...");
       socketInstance.connect();
     }
 
     return () => {
-      socketInstance.off('connect', onConnect);
-      socketInstance.off('disconnect', onDisconnect);
-      socketInstance.off('connect_error', onConnectError);
+      socketInstance.off("connect", onConnect);
+      socketInstance.off("disconnect", onDisconnect);
+      socketInstance.off("connect_error", onConnectError);
     };
   }, []);
 
   const joinRoom = (roomId: string, userId: string, userName: string) => {
     if (socketRef.current) {
-      socketRef.current.emit('join-room', { roomId, userId, userName });
+      socketRef.current.emit("join-room", { roomId, userId, userName });
     }
   };
 
   const leaveRoom = (roomId: string, userId: string) => {
     if (socketRef.current) {
-      socketRef.current.emit('leave-room', { roomId, userId });
+      socketRef.current.emit("leave-room", { roomId, userId });
     }
   };
 
@@ -66,6 +66,6 @@ export const useSocket = (): UseSocketReturn => {
     socket: socketRef.current,
     isConnected,
     joinRoom,
-    leaveRoom
+    leaveRoom,
   };
 };

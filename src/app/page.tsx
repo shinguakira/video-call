@@ -1,15 +1,15 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Video, Users, Shield, Zap } from 'lucide-react';
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Video, Users, Shield, Zap } from "lucide-react";
 
 export default function Home() {
   const router = useRouter();
-  const [roomId, setRoomId] = useState('');
+  const [roomId, setRoomId] = useState("");
 
   const createMeeting = () => {
     const newRoomId = Math.random().toString(36).substring(2, 15);
@@ -49,16 +49,16 @@ export default function Home() {
             Connect, collaborate, and celebrate from anywhere with secure, high-quality video calls.
             No sign-up required for basic use.
           </p>
-          
+
           <div className="flex flex-col sm:flex-row gap-4">
             <Button size="lg" className="text-lg px-8 py-6" onClick={createMeeting}>
               <Video className="mr-2 w-5 h-5" />
               New Meeting
             </Button>
-            
+
             <form onSubmit={joinMeeting} className="flex gap-2">
-              <Input 
-                placeholder="Enter code or link" 
+              <Input
+                placeholder="Enter code or link"
                 className="h-auto text-lg px-4"
                 value={roomId}
                 onChange={(e) => setRoomId(e.target.value)}
@@ -68,7 +68,7 @@ export default function Home() {
               </Button>
             </form>
           </div>
-          
+
           <div className="pt-8 border-t">
             <p className="text-sm text-muted-foreground mb-4">Trusted by developers worldwide</p>
             <div className="flex gap-8 opacity-50 grayscale">

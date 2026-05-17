@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { X, Send } from 'lucide-react';
-import { Socket } from 'socket.io-client';
+import { useState, useEffect, useRef } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { X, Send } from "lucide-react";
+import { Socket } from "socket.io-client";
 
 interface Message {
   userId: string;
@@ -23,35 +23,34 @@ interface ChatPanelProps {
   onClose: () => void;
 }
 
-export const ChatPanel = ({
-  socket,
-  roomId,
-  userId,
-  userName,
-  onClose
-}: ChatPanelProps) => {
+export const ChatPanel = ({ socket, roomId, userId, userName, onClose }: ChatPanelProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [newMessage, setNewMessage] = useState('');
+  const [newMessage, setNewMessage] = useState("");
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!socket) return;
 
-    const handleMessage = (msg: { userId: string; userName: string; message: string; timestamp: number }) => {
-      setMessages(prev => [...prev, { ...msg, isLocal: msg.userId === userId }]);
+    const handleMessage = (msg: {
+      userId: string;
+      userName: string;
+      message: string;
+      timestamp: number;
+    }) => {
+      setMessages((prev) => [...prev, { ...msg, isLocal: msg.userId === userId }]);
     };
 
-    socket.on('chat-message', handleMessage);
+    socket.on("chat-message", handleMessage);
 
     return () => {
-      socket.off('chat-message', handleMessage);
+      socket.off("chat-message", handleMessage);
     };
   }, [socket, userId]);
 
   useEffect(() => {
     // Scroll to bottom
     if (scrollRef.current) {
-      scrollRef.current.scrollIntoView({ behavior: 'smooth' });
+      scrollRef.current.scrollIntoView({ behavior: "smooth" });
     }
   }, [messages]);
 
@@ -60,21 +59,24 @@ export const ChatPanel = ({
     if (!newMessage.trim() || !socket) return;
 
     // Send to server
-    socket.emit('chat-message', {
+    socket.emit("chat-message", {
       roomId,
-      message: newMessage.trim()
+      message: newMessage.trim(),
     });
 
     // Add to local list immediately
-    setMessages(prev => [...prev, {
-      userId,
-      userName,
-      message: newMessage.trim(),
-      timestamp: Date.now(),
-      isLocal: true
-    }]);
+    setMessages((prev) => [
+      ...prev,
+      {
+        userId,
+        userName,
+        message: newMessage.trim(),
+        timestamp: Date.now(),
+        isLocal: true,
+      },
+    ]);
 
-    setNewMessage('');
+    setNewMessage("");
   };
 
   return (
@@ -89,23 +91,21 @@ export const ChatPanel = ({
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
           {messages.map((msg, i) => (
-            <div
-              key={i}
-              className={`flex flex-col ${msg.isLocal ? 'items-end' : 'items-start'}`}
-            >
+            <div key={i} className={`flex flex-col ${msg.isLocal ? "items-end" : "items-start"}`}>
               <div className="flex items-baseline gap-2 mb-1">
                 <span className="text-xs font-medium text-muted-foreground">
-                  {msg.isLocal ? 'You' : msg.userName}
+                  {msg.isLocal ? "You" : msg.userName}
                 </span>
                 <span className="text-[10px] text-muted-foreground/70">
-                  {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  {new Date(msg.timestamp).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })}
                 </span>
               </div>
               <div
                 className={`px-3 py-2 rounded-lg max-w-[85%] text-sm ${
-                  msg.isLocal
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted'
+                  msg.isLocal ? "bg-primary text-primary-foreground" : "bg-muted"
                 }`}
               >
                 {msg.message}

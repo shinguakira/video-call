@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from "react";
 
 interface UseMediaStreamReturn {
   stream: MediaStream | null;
@@ -30,16 +30,16 @@ export const useMediaStream = (): UseMediaStreamReturn => {
           video: {
             width: { ideal: 1280 },
             height: { ideal: 720 },
-            frameRate: { ideal: 30 }
+            frameRate: { ideal: 30 },
           },
-          audio: true
+          audio: true,
         });
 
         setStream(mediaStream);
         userStreamRef.current = mediaStream;
         setIsLoading(false);
       } catch (err) {
-        console.error('Error accessing media devices:', err);
+        console.error("Error accessing media devices:", err);
         setError(err as Error);
         setIsLoading(false);
       }
@@ -50,10 +50,10 @@ export const useMediaStream = (): UseMediaStreamReturn => {
     // Cleanup on unmount
     return () => {
       if (userStreamRef.current) {
-        userStreamRef.current.getTracks().forEach(track => track.stop());
+        userStreamRef.current.getTracks().forEach((track) => track.stop());
       }
       if (stream) {
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach((track) => track.stop());
       }
     };
   }, []);
@@ -82,7 +82,7 @@ export const useMediaStream = (): UseMediaStreamReturn => {
     try {
       const screenStream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
-        audio: false // System audio sharing is tricky, skipping for now
+        audio: false, // System audio sharing is tricky, skipping for now
       });
 
       const screenTrack = screenStream.getVideoTracks()[0];
@@ -97,13 +97,13 @@ export const useMediaStream = (): UseMediaStreamReturn => {
         const videoTrack = stream.getVideoTracks()[0];
         stream.removeTrack(videoTrack);
         stream.addTrack(screenTrack);
-        
+
         // Force update
         setStream(new MediaStream(stream.getTracks()));
         setIsScreenSharing(true);
       }
     } catch (err) {
-      console.error('Error starting screen share:', err);
+      console.error("Error starting screen share:", err);
     }
   };
 
@@ -133,6 +133,6 @@ export const useMediaStream = (): UseMediaStreamReturn => {
     isVideoEnabled,
     isScreenSharing,
     startScreenShare,
-    stopScreenShare
+    stopScreenShare,
   };
 };
