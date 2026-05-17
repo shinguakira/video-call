@@ -137,7 +137,7 @@ function initializeSocket(httpServer: HTTPServer) {
 // Next.js 13+ App Router WebSocket handler
 export const GET = async (req: NextRequest) => {
   // @ts-ignore - upgrade is available in Node.js HTTP server
-  const { socket: rawSocket, head } = req as any;
+  const { socket: rawSocket } = req as any;
 
   if (rawSocket && !io) {
     const httpServer = rawSocket.server as HTTPServer;

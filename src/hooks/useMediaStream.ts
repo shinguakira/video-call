@@ -22,6 +22,8 @@ export const useMediaStream = (): UseMediaStreamReturn => {
 
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const userStreamRef = useRef<MediaStream | null>(null);
+  // Saved camera track so stopScreenShare can restore it after screen sharing.
+  const savedCameraTrackRef = useRef<MediaStreamTrack | null>(null);
 
   useEffect(() => {
     const getStream = async () => {
@@ -47,14 +49,11 @@ export const useMediaStream = (): UseMediaStreamReturn => {
 
     getStream();
 
-    // Cleanup on unmount
     return () => {
-      if (userStreamRef.current) {
-        userStreamRef.current.getTracks().forEach((track) => track.stop());
-      }
-      if (stream) {
-        stream.getTracks().forEach((track) => track.stop());
-      }
+      // userStreamRef holds the original camera stream; stop all its tracks.
+      // Avoid referencing `stream` state here — the closure captures the value
+      // at effect creation time (always null for a [] dep effect).
+      userStreamRef.current?.getTracks().forEach((track) => track.stop());
     };
   }, []);
 
@@ -82,23 +81,21 @@ export const useMediaStream = (): UseMediaStreamReturn => {
     try {
       const screenStream = await navigator.mediaDevices.getDisplayMedia({
         video: true,
-        audio: false, // System audio sharing is tricky, skipping for now
+        audio: false,
       });
 
       const screenTrack = screenStream.getVideoTracks()[0];
+      screenTrack.onended = () => stopScreenShare();
 
-      // Handle user stopping screen share via browser UI
-      screenTrack.onended = () => {
-        stopScreenShare();
-      };
+      if (stream) {
+        const cameraTrack = stream.getVideoTracks()[0];
+        // Save the camera track BEFORE removing it from the stream so
+        // stopScreenShare can restore it. userStreamRef.current is the same
+        // object as stream, so we can't rely on it after removeTrack mutates it.
+        savedCameraTrackRef.current = cameraTrack;
 
-      if (stream && userStreamRef.current) {
-        // Replace video track in current stream
-        const videoTrack = stream.getVideoTracks()[0];
-        stream.removeTrack(videoTrack);
+        stream.removeTrack(cameraTrack);
         stream.addTrack(screenTrack);
-
-        // Force update
         setStream(new MediaStream(stream.getTracks()));
         setIsScreenSharing(true);
       }
@@ -108,19 +105,18 @@ export const useMediaStream = (): UseMediaStreamReturn => {
   };
 
   const stopScreenShare = () => {
-    if (stream && userStreamRef.current) {
-      const screenTrack = stream.getVideoTracks()[0];
-      screenTrack.stop(); // Stop screen share
+    if (!stream || !savedCameraTrackRef.current) return;
 
-      // Restore camera track
-      const cameraTrack = userStreamRef.current.getVideoTracks()[0];
+    const screenTrack = stream.getVideoTracks()[0];
+    if (screenTrack) {
+      screenTrack.stop();
       stream.removeTrack(screenTrack);
-      stream.addTrack(cameraTrack);
-
-      // Force update
-      setStream(new MediaStream(stream.getTracks()));
-      setIsScreenSharing(false);
     }
+
+    stream.addTrack(savedCameraTrackRef.current);
+    savedCameraTrackRef.current = null;
+    setStream(new MediaStream(stream.getTracks()));
+    setIsScreenSharing(false);
   };
 
   return {

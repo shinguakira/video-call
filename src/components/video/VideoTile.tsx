@@ -16,7 +16,7 @@ interface VideoTileProps {
 
 export const VideoTile = ({
   stream,
-  peerId,
+  peerId: _peerId,
   isLocal = false,
   isMuted = false,
   isVideoOff = false,

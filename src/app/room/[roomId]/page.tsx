@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useParams, useSearchParams, useRouter } from "next/navigation";
 import { useMediaStream } from "@/hooks/useMediaStream";
 import { useSocket } from "@/hooks/useSocket";
@@ -8,7 +8,6 @@ import { useWebRTC } from "@/hooks/useWebRTC";
 import { VideoGrid } from "@/components/video/VideoGrid";
 import { ControlPanel } from "@/components/video/ControlPanel";
 import { ChatPanel } from "@/components/chat/ChatPanel";
-import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 
 function RoomContent() {
@@ -34,7 +33,7 @@ function RoomContent() {
 
   const { socket, isConnected } = useSocket();
 
-  const { peers } = useWebRTC({
+  const { peers, markLeft } = useWebRTC({
     roomId,
     userId,
     userName,
@@ -45,21 +44,9 @@ function RoomContent() {
 
   const [isChatOpen, setIsChatOpen] = useState(false);
 
-  const [logs, setLogs] = useState<string[]>([]);
-
-  useEffect(() => {
-    const originalLog = console.log;
-    console.log = (...args) => {
-      setLogs((prev) => [...prev.slice(-4), args.map((a) => JSON.stringify(a)).join(" ")]);
-      originalLog(...args);
-    };
-    return () => {
-      console.log = originalLog;
-    };
-  }, []);
-
   const handleLeave = () => {
     if (socket) {
+      markLeft(); // prevent duplicate leave-room from useWebRTC cleanup
       socket.emit("leave-room", { roomId, userId });
       socket.disconnect();
     }
@@ -139,10 +126,9 @@ function RoomContent() {
               <p>ID: {socket?.id || "None"}</p>
               <button
                 onClick={() => {
-                  console.log("Force joining room...");
                   socket?.emit("join-room", { roomId, userId, userName });
                 }}
-                className="mt-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px]"
+                className="mt-2 bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded text-[10px] pointer-events-auto"
               >
                 Force Join
               </button>

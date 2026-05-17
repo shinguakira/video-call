@@ -4,7 +4,7 @@ let socket: Socket | null = null;
 
 export const getSocket = (): Socket => {
   if (!socket) {
-    socket = io("http://localhost:4001", {
+    socket = io(process.env.NEXT_PUBLIC_SIGNALING_URL ?? "http://localhost:4001", {
       autoConnect: true,
     });
   }

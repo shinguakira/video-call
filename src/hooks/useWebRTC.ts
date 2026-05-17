@@ -20,6 +20,7 @@ interface UseWebRTCProps {
 
 interface UseWebRTCReturn {
   peers: Map<string, PeerData>;
+  markLeft: () => void;
 }
 
 export const useWebRTC = ({
@@ -33,6 +34,8 @@ export const useWebRTC = ({
   const [peers, setPeers] = useState<Map<string, PeerData>>(new Map());
   const peersRef = useRef<Map<string, SimplePeer.Instance>>(new Map());
   const streamRef = useRef<MediaStream | null>(localStream);
+  // Prevents duplicate leave-room when handleLeave (room page) already sent it.
+  const hasLeftRef = useRef(false);
 
   // Handle stream updates (Screen Share)
   useEffect(() => {
@@ -234,8 +237,10 @@ export const useWebRTC = ({
       peersRef.current.forEach((peer) => peer.destroy());
       peersRef.current.clear();
 
-      // Leave room
-      socket.emit("leave-room", { roomId, userId });
+      // Only send leave-room if it hasn't been sent already (e.g. from handleLeave).
+      if (!hasLeftRef.current) {
+        socket.emit("leave-room", { roomId, userId });
+      }
     };
   }, [socket, roomId, userId]);
 
@@ -262,5 +267,9 @@ export const useWebRTC = ({
     socket.emit("join-room", { roomId, userId, userName });
   }, [socket, isConnected, localStream, roomId, userId, userName]);
 
-  return { peers };
+  const markLeft = () => {
+    hasLeftRef.current = true;
+  };
+
+  return { peers, markLeft };
 };

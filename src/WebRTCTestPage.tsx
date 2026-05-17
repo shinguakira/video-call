@@ -118,7 +118,6 @@ const WebRTCTestPage: React.FC = () => {
   const pcRef = useRef<RTCPeerConnection | null>(null);
   const makingOfferRef = useRef(false);
   const ignoreOfferRef = useRef(false);
-  const isSettingRemoteAnswerPendingRef = useRef(false);
   const signalingServiceRef = useRef<WebRTCSignalingService | null>(null);
   const remoteUserIdRef = useRef<string | null>(null);
 
