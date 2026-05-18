@@ -14,10 +14,22 @@ export default async function globalSetup(): Promise<() => void> {
       10_000,
     );
 
+    const done = () => {
+      clearTimeout(timer);
+      resolve();
+    };
+
     server.stdout?.on("data", (chunk: Buffer) => {
       if (chunk.toString().includes("Socket.IO server running on port 4001")) {
-        clearTimeout(timer);
-        resolve();
+        done();
+      }
+    });
+
+    // If port is already in use the process exits with EADDRINUSE on stderr —
+    // treat that as "already running" and resolve so tests can proceed.
+    server.stderr?.on("data", (chunk: Buffer) => {
+      if (chunk.toString().includes("EADDRINUSE")) {
+        done();
       }
     });
 
@@ -27,7 +39,6 @@ export default async function globalSetup(): Promise<() => void> {
     });
   });
 
-  // Return teardown function — Playwright calls this after all tests finish.
   return () => {
     server.kill();
   };
