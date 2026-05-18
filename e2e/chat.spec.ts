@@ -1,6 +1,7 @@
 import { test, expect, Browser, BrowserContext, Page } from "@playwright/test";
 import path from "path";
 import fs from "fs";
+import { mockCamera } from "./mock-camera";
 
 const SS_DIR = path.join(__dirname, "..", "test-screenshots", "chat");
 
@@ -22,6 +23,7 @@ async function joinRoom(
   userName: string,
 ): Promise<{ ctx: BrowserContext; page: Page }> {
   const ctx = await browser.newContext();
+  await mockCamera(ctx, userName);
   const page = await ctx.newPage();
 
   await page.goto(`/lobby?roomId=${roomId}`);
