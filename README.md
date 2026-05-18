@@ -1,75 +1,136 @@
-# Video Call App
+# VideoCall — WebRTC PoC
 
-A modern video calling application built with Next.js, TypeScript, Tailwind CSS, and shadcn/ui - similar to Microsoft Teams.
+ブラウザ間の P2P ビデオ通話 PoC。Next.js App Router + simple-peer + Socket.IO で構成。
 
 ## Tech Stack
 
-- **Framework**: Next.js 16.0.5 (App Router)
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS v4
-- **UI Components**: shadcn/ui (New York style)
-- **Icons**: Lucide React
-- **State Management**: React 19.2.0
+| レイヤー | 技術 | バージョン |
+|---|---|---|
+| Framework | Next.js (App Router) | 16.0.5 |
+| Language | TypeScript | 5.x |
+| UI | React 19 + Tailwind v4 + shadcn/ui | – |
+| WebRTC | simple-peer | 9.11.1 |
+| Signaling | Socket.IO | 4.8.1 |
 
-## Installed shadcn/ui Components
+---
 
-The following UI components are ready to use:
-- Button
-- Card
-- Avatar
-- Badge
-- Dialog
-- Dropdown Menu
-- Input
-- Separator
-- Tooltip
+## 画面一覧 / ユーザーマニュアル
 
-## Project Structure
+> 詳細な手順は **[docs/user-manual.md](./docs/user-manual.md)** を参照してください。
+
+### ① トップページ — ルームの作成・参加
+
+![ホーム画面](docs/screenshots/01_home.png)
+
+「New Meeting」で新しいルームを作成、またはルームIDを入力して「Join」で既存のルームに参加します。
+
+---
+
+### ② ロビー — カメラ・マイク確認
+
+![ロビー画面](docs/screenshots/02_lobby.png)
+
+入室前にカメラ映像を確認し、表示名を設定します。マイク・カメラのオン/オフも事前に切り替えられます。
+
+---
+
+### ③ 通話室 — 接続待ち / 通話中
+
+| 待機中 | 2人接続時 |
+|---|---|
+| ![待機中](docs/screenshots/03_room_waiting.png) | ![接続中](docs/screenshots/04_room_connected.png) |
+
+相手が参加すると自動的にWebRTC P2P接続が確立し、映像・音声が届きます。
+
+---
+
+### ④ テキストチャット
+
+| チャットを開く | 送信側（You ラベル） | 受信側（名前ラベル） |
+|---|---|---|
+| ![チャット開く](docs/screenshots/05_chat_open.png) | ![送信](docs/screenshots/06_chat_send.png) | ![受信](docs/screenshots/07_chat_receive.png) |
+
+下部の💬ボタンでチャットパネルを開きます。送ったメッセージは「You」、受け取ったメッセージは相手の名前付きで表示されます。
+
+双方向のやり取り例：
+
+![双方向チャット](docs/screenshots/08_chat_exchange.png)
+
+---
+
+### ⑤ 退出後の画面
+
+![退出後](docs/screenshots/09_room_after_leave.png)
+
+参加者が退出すると相手のタイルが消え、残ったユーザーが全画面表示に戻ります。
+
+---
+
+## アーキテクチャ
 
 ```
-video-call/
-├── src/
-│   ├── app/              # Next.js App Router pages
-│   ├── components/       # React components
-│   │   └── ui/          # shadcn/ui components
-│   └── lib/             # Utility functions
-├── public/              # Static assets
-└── package.json
+Browser A                    Signaling Server (port 4001)       Browser B
+   │                                    │                           │
+   ├── join-room ─────────────────────► │                           │
+   │ ◄── existing-users ─────────────── │                           │
+   │                                    │ ◄── join-room ────────────┤
+   │ ◄── user-joined ───────────────────┤                           │
+   ├── signal (offer) ──────────────── ►│──── signal ──────────────►│
+   │ ◄── signal (answer) ───────────────┤◄─── signal ───────────────┤
+   │◄════════════ P2P WebRTC stream ════════════════════════════════►│
 ```
 
-## Getting Started
+### 主要ファイル
 
-First, run the development server:
-
-```bash
-npm run dev
+```
+src/
+├── app/
+│   ├── page.tsx              # ランディングページ（ルーム作成・参加）
+│   ├── lobby/page.tsx        # 参加前プレビュー画面
+│   └── room/[roomId]/page.tsx # 通話メイン画面
+├── hooks/
+│   ├── useMediaStream.ts     # カメラ・マイク・画面共有
+│   ├── useSocket.ts          # Socket.IO 接続管理
+│   └── useWebRTC.ts          # P2P 接続・シグナリング処理
+├── lib/
+│   └── socket.ts             # Socket.IO クライアントシングルトン
+└── components/
+    ├── video/VideoGrid.tsx   # ビデオグリッドレイアウト
+    ├── video/VideoTile.tsx   # 参加者ビデオタイル
+    ├── video/ControlPanel.tsx # ミュート・共有・退出ボタン
+    └── chat/ChatPanel.tsx    # チャットサイドパネル
+server.js                     # シグナリングサーバー（standalone）
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-## Adding More Components
+## ⚠️ 既知の問題（本番・ネット越し接続）
 
-To add more shadcn/ui components:
+詳細は [AGENTS.md](./AGENTS.md#ネット接続の問題点) を参照。
 
-```bash
-npx shadcn@latest add [component-name]
-```
+| 問題 | 場所 | 影響 |
+|---|---|---|
+| Socket URL ハードコード | `src/lib/socket.ts:7` | ローカル以外からシグナリング不可 |
+| STUN/TURN 未設定 | `src/hooks/useWebRTC.ts:82,138` | NAT 越え P2P 接続失敗 |
+| HTTP のみ | – | ブラウザが getUserMedia をブロック（localhost 除く） |
+| CORS ワイルドカード | `server.js:6` | 本番では要制限 |
 
-Browse available components at [ui.shadcn.com](https://ui.shadcn.com)
+## E2E テスト
 
-## Next Steps
+Playwright + Chromium で実行。カメラ・マイクは `--use-fake-device-for-media-stream` でモック済み。テスト実行時は各ステップのスクリーンショットが `test-screenshots/` に自動保存されます。
 
-1. Set up WebRTC for video/audio streaming
-2. Implement room creation and joining
-3. Add participant management
-4. Create video grid layout
-5. Add chat functionality
-6. Implement screen sharing
-7. Add meeting controls (mute, camera toggle, etc.)
+| ファイル | 内容 |
+|---|---|
+| `e2e/home.spec.ts` | ランディングページの UI とナビゲーション |
+| `e2e/lobby.spec.ts` | ロビーのカメラプレビューとフォーム |
+| `e2e/room.spec.ts` | 通話室の接続状態 + ネットワーク障害ドキュメント |
+| `e2e/call.spec.ts` | 2ブラウザ間 WebRTC 通話（接続・退出） |
+| `e2e/chat.spec.ts` | 2ブラウザ間チャット（送受信・ラベル・ルーム分離） |
 
-## Learn More
+## ドキュメント
 
-- [Next.js Documentation](https://nextjs.org/docs)
-- [shadcn/ui Documentation](https://ui.shadcn.com)
-- [Tailwind CSS Documentation](https://tailwindcss.com/docs)
-- [WebRTC Documentation](https://webrtc.org/getting-started/overview)
+| ファイル | 内容 |
+|---|---|
+| [docs/user-manual.md](./docs/user-manual.md) | スクリーンショット付きユーザーマニュアル |
+| [docs/pitfalls.md](./docs/pitfalls.md) | 実装で踏んだハマりポイント集 |
+| [AGENTS.md](./AGENTS.md) | AI エージェント向けコードガイド |

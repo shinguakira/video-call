@@ -1,13 +1,12 @@
-'use client';
+"use client";
 
-import { useEffect, useRef } from 'react';
-import { Card } from '@/components/ui/card';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Mic, MicOff, User } from 'lucide-react';
+import { useEffect, useRef } from "react";
+import { Card } from "@/components/ui/card";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Mic, MicOff, User } from "lucide-react";
 
 interface VideoTileProps {
   stream: MediaStream | null;
-  peerId: string;
   isLocal?: boolean;
   isMuted?: boolean;
   isVideoOff?: boolean;
@@ -16,11 +15,10 @@ interface VideoTileProps {
 
 export const VideoTile = ({
   stream,
-  peerId,
   isLocal = false,
   isMuted = false,
   isVideoOff = false,
-  name = 'User'
+  name = "User",
 }: VideoTileProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
 
@@ -31,9 +29,9 @@ export const VideoTile = ({
   }, [stream]);
 
   const initials = name
-    .split(' ')
-    .map(n => n[0])
-    .join('')
+    .split(" ")
+    .map((n) => n[0])
+    .join("")
     .toUpperCase()
     .slice(0, 2);
 
@@ -65,7 +63,7 @@ export const VideoTile = ({
           <Mic className="w-4 h-4 text-green-500" />
         )}
         <span className="text-white text-sm font-medium">
-          {name} {isLocal && '(You)'}
+          {name} {isLocal && "(You)"}
         </span>
       </div>
     </Card>

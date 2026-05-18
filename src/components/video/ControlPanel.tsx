@@ -1,8 +1,8 @@
-'use client';
+"use client";
 
-import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Mic, MicOff, Video, VideoOff, PhoneOff, MessageSquare, Monitor } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { Mic, MicOff, Video, VideoOff, PhoneOff, MessageSquare, Monitor } from "lucide-react";
 
 interface ControlPanelProps {
   isAudioEnabled: boolean;
@@ -21,7 +21,7 @@ export const ControlPanel = ({
   onToggleVideo,
   onLeave,
   onToggleChat,
-  onShareScreen
+  onShareScreen,
 }: ControlPanelProps) => {
   return (
     <div className="fixed bottom-0 left-0 right-0 h-20 bg-background/95 backdrop-blur-sm border-t flex items-center justify-center gap-4 px-8">
@@ -30,7 +30,7 @@ export const ControlPanel = ({
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              variant={isAudioEnabled ? 'default' : 'destructive'}
+              variant={isAudioEnabled ? "default" : "destructive"}
               size="icon"
               className="w-12 h-12 rounded-full"
               onClick={onToggleAudio}
@@ -39,7 +39,7 @@ export const ControlPanel = ({
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>{isAudioEnabled ? 'Mute' : 'Unmute'}</p>
+            <p>{isAudioEnabled ? "Mute" : "Unmute"}</p>
           </TooltipContent>
         </Tooltip>
 
@@ -47,7 +47,7 @@ export const ControlPanel = ({
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
-              variant={isVideoEnabled ? 'default' : 'destructive'}
+              variant={isVideoEnabled ? "default" : "destructive"}
               size="icon"
               className="w-12 h-12 rounded-full"
               onClick={onToggleVideo}
@@ -56,7 +56,7 @@ export const ControlPanel = ({
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            <p>{isVideoEnabled ? 'Turn off camera' : 'Turn on camera'}</p>
+            <p>{isVideoEnabled ? "Turn off camera" : "Turn on camera"}</p>
           </TooltipContent>
         </Tooltip>
 
@@ -86,6 +86,7 @@ export const ControlPanel = ({
               <Button
                 variant="outline"
                 size="icon"
+                aria-label="Toggle chat"
                 className="w-12 h-12 rounded-full"
                 onClick={onToggleChat}
               >
@@ -104,6 +105,7 @@ export const ControlPanel = ({
             <Button
               variant="destructive"
               size="icon"
+              aria-label="Leave call"
               className="w-12 h-12 rounded-full"
               onClick={onLeave}
             >
