@@ -48,6 +48,58 @@ src/
 server.js                     # シグナリングサーバー（standalone）
 ```
 
+## 画面一覧 / ユーザーマニュアル
+
+> 詳細な手順は **[docs/user-manual.md](./docs/user-manual.md)** を参照してください。
+
+### ① トップページ — ルームの作成・参加
+
+![ホーム画面](docs/screenshots/01_home.png)
+
+「New Meeting」で新しいルームを作成、またはルームIDを入力して「Join」で既存のルームに参加します。
+
+---
+
+### ② ロビー — カメラ・マイク確認
+
+![ロビー画面](docs/screenshots/02_lobby.png)
+
+入室前にカメラ映像を確認し、表示名を設定します。マイク・カメラのオン/オフも事前に切り替えられます。
+
+---
+
+### ③ 通話室 — 接続待ち / 通話中
+
+| 待機中 | 2人接続時 |
+|---|---|
+| ![待機中](docs/screenshots/03_room_waiting.png) | ![接続中](docs/screenshots/04_room_connected.png) |
+
+相手が参加すると自動的にWebRTC P2P接続が確立し、映像・音声が届きます。
+
+---
+
+### ④ テキストチャット
+
+| チャットを開く | 送信側（You ラベル） | 受信側（名前ラベル） |
+|---|---|---|
+| ![チャット開く](docs/screenshots/05_chat_open.png) | ![送信](docs/screenshots/06_chat_send.png) | ![受信](docs/screenshots/07_chat_receive.png) |
+
+下部の💬ボタンでチャットパネルを開きます。送ったメッセージは「You」、受け取ったメッセージは相手の名前付きで表示されます。
+
+双方向のやり取り例：
+
+![双方向チャット](docs/screenshots/08_chat_exchange.png)
+
+---
+
+### ⑤ 退出後の画面
+
+![退出後](docs/screenshots/09_room_after_leave.png)
+
+参加者が退出すると相手のタイルが消え、残ったユーザーが全画面表示に戻ります。
+
+---
+
 ## Getting Started
 
 **ターミナル 1** — シグナリングサーバーを起動
@@ -113,3 +165,15 @@ Playwright + Chromium で実行。カメラ・マイクは `--use-fake-device-fo
 | `e2e/home.spec.ts` | ランディングページの UI とナビゲーション |
 | `e2e/lobby.spec.ts` | ロビーのカメラプレビューとフォーム |
 | `e2e/room.spec.ts` | 通話室の接続状態 + ネットワーク障害ドキュメント |
+| `e2e/call.spec.ts` | 2ブラウザ間 WebRTC 通話（接続・退出） |
+| `e2e/chat.spec.ts` | 2ブラウザ間チャット（送受信・ラベル・ルーム分離） |
+
+テスト実行時は各ステップのスクリーンショットが `test-screenshots/` に自動保存されます。
+
+## ドキュメント
+
+| ファイル | 内容 |
+|---|---|
+| [docs/user-manual.md](./docs/user-manual.md) | スクリーンショット付きユーザーマニュアル |
+| [docs/pitfalls.md](./docs/pitfalls.md) | 実装で踏んだハマりポイント集 |
+| [AGENTS.md](./AGENTS.md) | AI エージェント向けコードガイド |
