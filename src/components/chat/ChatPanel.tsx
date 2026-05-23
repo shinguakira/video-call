@@ -91,7 +91,11 @@ export const ChatPanel = ({ socket, roomId, userId, userName, onClose }: ChatPan
       <ScrollArea className="flex-1 p-4">
         <div className="space-y-4">
           {messages.map((msg, i) => (
-            <div key={i} data-testid="chat-message" className={`flex flex-col ${msg.isLocal ? "items-end" : "items-start"}`}>
+            <div
+              key={i}
+              data-testid="chat-message"
+              className={`flex flex-col ${msg.isLocal ? "items-end" : "items-start"}`}
+            >
               <div className="flex items-baseline gap-2 mb-1">
                 <span className="text-xs font-medium text-muted-foreground">
                   {msg.isLocal ? "You" : msg.userName}

@@ -11,6 +11,8 @@
     "lint:ox:fix": "oxlint --fix src/ e2e/",
     "fmt": "oxfmt src/ e2e/",
     "fmt:check": "oxfmt --check src/ e2e/",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.e2e.json",
+    "validate": "npm run lint:ox:fix && npm run fmt && npm run typecheck",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "test:e2e:report": "playwright show-report"

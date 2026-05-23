@@ -26,28 +26,34 @@ export async function register() {
   io.on("connection", (socket) => {
     console.log(`[Signal] connected: ${socket.id}`);
 
-    socket.on("join-room", ({ roomId, userId, userName }: { roomId: string; userId: string; userName: string }) => {
-      if (!rooms.has(roomId)) rooms.set(roomId, new Map());
-      const room = rooms.get(roomId)!;
+    socket.on(
+      "join-room",
+      ({ roomId, userId, userName }: { roomId: string; userId: string; userName: string }) => {
+        if (!rooms.has(roomId)) rooms.set(roomId, new Map());
+        const room = rooms.get(roomId)!;
 
-      // Idempotent — React Strict Mode can fire join-room twice
-      if (room.get(userId)?.socketId === socket.id) {
-        console.log(`[Signal] duplicate join ignored: ${userId}`);
-        return;
-      }
+        // Idempotent — React Strict Mode can fire join-room twice
+        if (room.get(userId)?.socketId === socket.id) {
+          console.log(`[Signal] duplicate join ignored: ${userId}`);
+          return;
+        }
 
-      socket.join(roomId);
-      const existingUsers = Array.from(room.values());
-      room.set(userId, { socketId: socket.id, userId, userName });
+        socket.join(roomId);
+        const existingUsers = Array.from(room.values());
+        room.set(userId, { socketId: socket.id, userId, userName });
 
-      if (existingUsers.length === 0) {
-        socket.emit("room-joined", { isFirst: true });
-      } else {
-        socket.to(roomId).emit("user-joined", { userId, userName });
-        socket.emit("existing-users", existingUsers.map((u) => ({ userId: u.userId, userName: u.userName })));
-      }
-      console.log(`[Signal] ${userId} joined ${roomId} (${room.size} users)`);
-    });
+        if (existingUsers.length === 0) {
+          socket.emit("room-joined", { isFirst: true });
+        } else {
+          socket.to(roomId).emit("user-joined", { userId, userName });
+          socket.emit(
+            "existing-users",
+            existingUsers.map((u) => ({ userId: u.userId, userName: u.userName })),
+          );
+        }
+        console.log(`[Signal] ${userId} joined ${roomId} (${room.size} users)`);
+      },
+    );
 
     socket.on("signal", ({ targetUserId, signal }: { targetUserId: string; signal: unknown }) => {
       let targetSocketId: string | null = null;
@@ -56,7 +62,9 @@ export async function register() {
       rooms.forEach((users) => {
         const target = users.get(targetUserId);
         if (target) targetSocketId = target.socketId;
-        users.forEach((u) => { if (u.socketId === socket.id) fromUserId = u.userId; });
+        users.forEach((u) => {
+          if (u.socketId === socket.id) fromUserId = u.userId;
+        });
       });
 
       if (targetSocketId && fromUserId) {

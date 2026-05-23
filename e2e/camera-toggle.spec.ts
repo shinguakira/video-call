@@ -1,4 +1,4 @@
-import { test, expect, BrowserContext, Page } from "@playwright/test";
+import { test, expect, BrowserContext, Page, TestInfo } from "@playwright/test";
 import path from "path";
 import fs from "fs";
 import { mockCamera } from "./mock-camera";
@@ -9,7 +9,7 @@ function ensureDir(dir: string) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
-async function shot(page: Page, label: string, testInfo: Parameters<Parameters<typeof test>[1]>[0]) {
+async function shot(page: Page, label: string, testInfo: TestInfo) {
   const buf = await page.screenshot({ fullPage: false });
   const filename = `${testInfo.title.replace(/[^a-z0-9]/gi, "_")}__${label}.png`;
   ensureDir(SS_DIR);
@@ -17,11 +17,7 @@ async function shot(page: Page, label: string, testInfo: Parameters<Parameters<t
   await testInfo.attach(label, { body: buf, contentType: "image/png" });
 }
 
-async function joinRoom(
-  ctx: BrowserContext,
-  roomId: string,
-  userName: string,
-): Promise<Page> {
+async function joinRoom(ctx: BrowserContext, roomId: string, userName: string): Promise<Page> {
   const page = await ctx.newPage();
   await page.goto(`/lobby?roomId=${roomId}`);
   await page.getByLabel("Display Name").fill(userName);
@@ -51,7 +47,9 @@ test.describe("Camera on/off toggle", () => {
       // 2. Turn camera OFF
       await page.getByRole("button", { name: "Toggle camera" }).click();
       // Avatar placeholder must appear
-      await expect(page.locator('[class*="from-gray-800"]').first()).toBeVisible({ timeout: 5_000 });
+      await expect(page.locator('[class*="from-gray-800"]').first()).toBeVisible({
+        timeout: 5_000,
+      });
       // <video> must be hidden (CSS class), NOT removed from DOM
       await expect(video).toBeHidden();
       await expect(video).toBeAttached(); // still in DOM — srcObject preserved
@@ -72,7 +70,6 @@ test.describe("Camera on/off toggle", () => {
       });
       expect(hasSrcObject).toBe(true);
       await shot(page, "04_srcObject_verified", testInfo);
-
     } finally {
       await ctx.close();
     }
@@ -103,7 +100,6 @@ test.describe("Camera on/off toggle", () => {
       });
       expect(hasSrcObject).toBe(true);
       await shot(page, "01_after_3_cycles", testInfo);
-
     } finally {
       await ctx.close();
     }
