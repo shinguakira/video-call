@@ -44,7 +44,8 @@ export async function mockCamera(ctx: BrowserContext, userName: string): Promise
       initial: string;
     }) => {
       navigator.mediaDevices.getUserMedia = async (constraints) => {
-        const W = 640, H = 480;
+        const W = 640,
+          H = 480;
         const canvas = document.createElement("canvas");
         canvas.width = W;
         canvas.height = H;
@@ -93,7 +94,8 @@ export async function mockCamera(ctx: BrowserContext, userName: string): Promise
 
           // ── Avatar: breathing scale ────────────────────────────────
           const breath = 1 + Math.sin(t * 1.1) * 0.014;
-          const cx = W / 2, cy = H / 2 + 4;
+          const cx = W / 2,
+            cy = H / 2 + 4;
           const R = 96 * breath;
 
           // Occasional speaking pulse (random trigger every ~4s)

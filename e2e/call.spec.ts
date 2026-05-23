@@ -1,4 +1,4 @@
-import { test, expect, Browser, BrowserContext, Page } from "@playwright/test";
+import { test, expect, Browser, BrowserContext, Page, TestInfo } from "@playwright/test";
 import path from "path";
 import fs from "fs";
 import { mockCamera } from "./mock-camera";
@@ -9,7 +9,7 @@ function ensureDir(dir: string) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
-async function shot(page: Page, label: string, testInfo: Parameters<Parameters<typeof test>[1]>[0]) {
+async function shot(page: Page, label: string, testInfo: TestInfo) {
   const buf = await page.screenshot({ fullPage: false });
   const filename = `${testInfo.title.replace(/[^a-z0-9]/gi, "_")}__${label}.png`;
   ensureDir(SS_DIR);

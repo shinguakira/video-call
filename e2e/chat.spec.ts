@@ -1,4 +1,4 @@
-import { test, expect, Browser, BrowserContext, Page } from "@playwright/test";
+import { test, expect, Browser, BrowserContext, Page, TestInfo } from "@playwright/test";
 import path from "path";
 import fs from "fs";
 import { mockCamera } from "./mock-camera";
@@ -9,7 +9,7 @@ function ensureDir(dir: string) {
   fs.mkdirSync(dir, { recursive: true });
 }
 
-async function shot(page: Page, label: string, testInfo: Parameters<Parameters<typeof test>[1]>[0]) {
+async function shot(page: Page, label: string, testInfo: TestInfo) {
   const buf = await page.screenshot({ fullPage: false });
   const filename = `${testInfo.title.replace(/[^a-z0-9]/gi, "_")}__${label}.png`;
   ensureDir(SS_DIR);
@@ -87,7 +87,10 @@ test.describe("In-call chat (two browsers)", () => {
       await expect(pageA.getByText("Hello from Alice")).toBeVisible();
       // Alice's bubble is styled as local (bg-primary class)
       await expect(
-        pageA.locator('[data-testid="chat-message"]').filter({ hasText: "Hello from Alice" }).locator(".bg-primary")
+        pageA
+          .locator('[data-testid="chat-message"]')
+          .filter({ hasText: "Hello from Alice" })
+          .locator(".bg-primary"),
       ).toBeVisible();
       // Alice sees "You" label, NOT her own name
       await expect(senderLabel(pageA, "You")).toBeVisible();
@@ -103,7 +106,10 @@ test.describe("In-call chat (two browsers)", () => {
       await expect(senderLabel(pageB, "You")).not.toBeVisible();
       // Bob's bubble is styled as remote (bg-muted class)
       await expect(
-        pageB.locator('[data-testid="chat-message"]').filter({ hasText: "Hello from Alice" }).locator(".bg-muted")
+        pageB
+          .locator('[data-testid="chat-message"]')
+          .filter({ hasText: "Hello from Alice" })
+          .locator(".bg-muted"),
       ).toBeVisible();
       // Exactly 1 message in Bob's panel
       await expect(messageBubbles(pageB)).toHaveCount(1);
@@ -132,11 +138,17 @@ test.describe("In-call chat (two browsers)", () => {
       await expect(messageBubbles(pageA)).toHaveCount(2);
       // Alice sent "Hi Bob!" → local bubble
       await expect(
-        pageA.locator('[data-testid="chat-message"]').filter({ hasText: "Hi Bob!" }).locator(".bg-primary")
+        pageA
+          .locator('[data-testid="chat-message"]')
+          .filter({ hasText: "Hi Bob!" })
+          .locator(".bg-primary"),
       ).toBeVisible();
       // Alice received "Hey Alice!" → remote bubble
       await expect(
-        pageA.locator('[data-testid="chat-message"]').filter({ hasText: "Hey Alice!" }).locator(".bg-muted")
+        pageA
+          .locator('[data-testid="chat-message"]')
+          .filter({ hasText: "Hey Alice!" })
+          .locator(".bg-muted"),
       ).toBeVisible();
       await shot(pageA, "01_alice_both_messages", testInfo);
 
@@ -146,11 +158,17 @@ test.describe("In-call chat (two browsers)", () => {
       await expect(messageBubbles(pageB)).toHaveCount(2);
       // Bob received "Hi Bob!" → remote bubble
       await expect(
-        pageB.locator('[data-testid="chat-message"]').filter({ hasText: "Hi Bob!" }).locator(".bg-muted")
+        pageB
+          .locator('[data-testid="chat-message"]')
+          .filter({ hasText: "Hi Bob!" })
+          .locator(".bg-muted"),
       ).toBeVisible();
       // Bob sent "Hey Alice!" → local bubble
       await expect(
-        pageB.locator('[data-testid="chat-message"]').filter({ hasText: "Hey Alice!" }).locator(".bg-primary")
+        pageB
+          .locator('[data-testid="chat-message"]')
+          .filter({ hasText: "Hey Alice!" })
+          .locator(".bg-primary"),
       ).toBeVisible();
       await shot(pageB, "02_bob_both_messages", testInfo);
     } finally {
@@ -159,7 +177,9 @@ test.describe("In-call chat (two browsers)", () => {
     }
   });
 
-  test("sender's own message shows 'You', receiver sees real name", async ({ browser }, testInfo) => {
+  test("sender's own message shows 'You', receiver sees real name", async ({
+    browser,
+  }, testInfo) => {
     const roomId = "e2e-chat-labels";
     const { ctx: ctxA, page: pageA } = await joinRoom(browser, roomId, "Alice");
     const { ctx: ctxB, page: pageB } = await joinRoom(browser, roomId, "Bob");

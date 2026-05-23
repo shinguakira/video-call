@@ -49,6 +49,7 @@ export const ControlPanel = ({
             <Button
               variant={isVideoEnabled ? "default" : "destructive"}
               size="icon"
+              aria-label="Toggle camera"
               className="w-12 h-12 rounded-full"
               onClick={onToggleVideo}
             >
