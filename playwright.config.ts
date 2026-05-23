@@ -8,7 +8,7 @@ export default defineConfig({
   workers: process.env.CI ? 1 : 2,
   reporter: [['html', { outputFolder: 'playwright-report' }], ['list']],
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: 'http://localhost:3021',
     trace: 'on',
     screenshot: 'on',
     // Fake camera/mic so getUserMedia resolves without real hardware
@@ -28,7 +28,7 @@ export default defineConfig({
   ],
   webServer: {
     command: 'npm run dev',  // uses --turbopack via package.json
-    url: 'http://localhost:3000',
+    url: 'http://localhost:3021',
     reuseExistingServer: !process.env.CI,
     timeout: 60_000,
   },
